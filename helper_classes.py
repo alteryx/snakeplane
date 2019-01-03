@@ -315,6 +315,9 @@ class OutputManager:
     def get_anchor(self, name):
         return self._plugin._state_vars.output_anchors.get(name)
 
+    def get_temp_file_path(self):
+        return self._plugin._engine_vars.alteryx_engine.create_temp_file_name() 
+
 
 class OutputAnchor:
     def __init__(self):
