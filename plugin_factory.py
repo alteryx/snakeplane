@@ -1,5 +1,6 @@
 # Built in Libraries
 import pdb
+import copy
 from functools import wraps
 from typing import Callable, Iterable, Union, Optional, List
 
@@ -67,8 +68,19 @@ class PluginFactory:
             # Assuming that tool has ExampleToolConfig.xml file
             factory = PluginFactory("ExampleTool") 
         """
-        self._plugin = AyxPlugin
-        self._plugin.plugin_interface = AyxPluginInterface
+
+        # Make local, per instance copies of the plugins so that multiple plugins
+        # can be generated with the same library. Since the plugin factory does metaprogramming,
+        # we can't modify the original definitions of AyxPlugin/AyxPluginInterface without
+        # contaminating the package
+        class Plugin(AyxPlugin):
+            pass
+
+        class Interface(AyxPluginInterface):
+            pass
+
+        self._plugin = Plugin
+        self._plugin.plugin_interface = Interface
 
         setattr(self._plugin, "tool_name", tool_name)
 
