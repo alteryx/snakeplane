@@ -78,7 +78,7 @@ class AyxPlugin:
         for connection in plugin_utils.get_xml_config_input_connections(
             self._state_vars.config_data
         ):
-            self._state_vars.input_anchors[connection["@Name"]] = None
+            self._state_vars.input_anchors[connection["@Name"]] = []
 
             # Track names of the inputs that are required for this tool to run
             if connection["@Optional"] == "False":
@@ -102,7 +102,7 @@ class AyxPlugin:
             )
 
     def save_interface(self, name, interface):
-        self._state_vars.input_anchors[name] = interface
+        self._state_vars.input_anchors[name].append(interface)
 
     def is_update_only_mode(self):
         return (
@@ -139,8 +139,10 @@ class AyxPlugin:
         all_inputs_completed = True
         if self.is_initialized():
             for name in self._state_vars.required_input_names:
-                anchor = self._state_vars.input_anchors[name]
-                if anchor is None or not anchor.is_complete():
+                connections = self._state_vars.input_anchors[name]
+                if len(connections) == 0 or not all(
+                    [connection.is_complete() for connection in connections]
+                ):
                     all_inputs_completed = False
         else:
             all_inputs_completed = False
@@ -192,7 +194,8 @@ class AyxPlugin:
             This function has side effects on plugin, and therefore has no return
         """
         for _, anchor in self._state_vars.input_anchors.items():
-            anchor._interface_record_vars.record_list_in = []
+            for connection in anchor:
+                connection._interface_record_vars.record_list_in = []
 
     def create_record_info(self):
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
@@ -316,7 +319,7 @@ class OutputManager:
         return self._plugin._state_vars.output_anchors.get(name)
 
     def get_temp_file_path(self):
-        return self._plugin._engine_vars.alteryx_engine.create_temp_file_name() 
+        return self._plugin._engine_vars.alteryx_engine.create_temp_file_name()
 
 
 class OutputAnchor:
