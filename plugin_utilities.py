@@ -34,6 +34,10 @@ def noop(*args, **kwargs) -> None:
     pass
 
 
+def get_tools_location():
+    return f"{os.environ['APPDATA']}\\Alteryx\\Tools"
+
+
 # plugin
 def get_tool_path(tool_name: str) -> str:
     """
@@ -50,7 +54,7 @@ def get_tool_path(tool_name: str) -> str:
     str
         Absolute file path to the tool specified
     """
-    return f"{os.environ['APPDATA']}\\Alteryx\\Tools\\{tool_name}"
+    return f"{get_tools_location()}\\{tool_name}"
 
 
 # plugin
