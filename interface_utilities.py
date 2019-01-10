@@ -50,6 +50,7 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
             "int32": field.get_as_int32,
             "int64": field.get_as_int64,
             "float": field.get_as_double,
+            "double": field.get_as_double,
             "bool": field.get_as_bool,
             "string": field.get_as_string,
             "v_string": field.get_as_string,

@@ -253,14 +253,9 @@ class PluginFactory:
             # The commented out error below is causing failures because the pi_close method
             # isn't called when we think it should be...
 
-            # if not current_plugin.all_inputs_completed():
-            #     current_plugin.logging.display_error_msg(
-            #         "Missing Incoming Connection(s)"
-            #     )
-            # else:
-            func(current_plugin)
-
-            current_plugin.close_all_outputs()
+            if current_plugin.all_inputs_completed():
+                func(current_plugin)
+                current_plugin.close_all_outputs()
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
