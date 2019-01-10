@@ -1,7 +1,9 @@
 # Built in Libraries
 import os
+from collections import namedtuple
 from typing import Union, Any, List, Optional, cast, Set, Dict, Tuple
 import pdb
+import logging
 
 # 3rd Party Libraries
 try:
@@ -12,10 +14,8 @@ except:
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
 
-# Custom libraries
-from . import plugin_utilities as plugin_utils
-
-# interface
+# Create a column named tuple for use in below functions
+Column = namedtuple("Column", ["name", "type", "value"])
 
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
@@ -42,19 +42,26 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         dobule, bool, or string. The returned value represents the parsed/typed 
         value of the desired field from the input record
     """
-    fieldType = str(field.type)
-    if fieldType == "blob":
-        return field.get_as_blob(record)
-    elif any(fieldType in s for s in ["byte", "int16", "int32"]):
-        return field.get_as_int32(record)
-    elif fieldType == "int64":
-        return field.get_as_int64(record)
-    elif any(fieldType in s for s in ["float"]):
-        return field.get_as_double(record)
-    elif fieldType == "bool":
-        return field.get_as_bool(record)
-    else:
-        return field.get_as_string(record)
+    try:
+        return {
+            "blob": field.get_as_blob,
+            "byte": field.get_as_int32,
+            "int16": field.get_as_int32,
+            "int32": field.get_as_int32,
+            "int64": field.get_as_int64,
+            "float": field.get_as_double,
+            "bool": field.get_as_bool,
+            "string": field.get_as_string,
+            "v_string": field.get_as_string,
+            "v_wstring": field.get_as_string,
+            "wstring": field.get_as_string,
+        }[str(field.type)](record)
+    except KeyError:
+        # The type wasn't found, throw an error to let the use know
+        err_str = f'Failed to automatically convert field type "{str(field.type)}" due to unidentified type name.'
+        logger = logging.getLogger(__name__)
+        logger.error(err_str, stack_info=True)
+        raise TypeError(err_str)
 
 
 # interface
@@ -244,7 +251,9 @@ def build_ayx_record_info(
         This is a stateful function that produces side effects by modifying
         the record_info object. 
     """
-    output_columns = zip(names_list, types_list)
+    output_columns = [
+        Column(names_list[i], types_list[i], None) for i in range(len(names_list))
+    ]
 
     for output_column in output_columns:
         add_output_column_to_record_info(output_column, record_info)
@@ -311,10 +320,10 @@ def build_ayx_record_from_list(
             If one is not passed in, it creates a new one from the RecordInfo param, uses it to
             create a record, and returns it.  
     """
-    get_col_name = lambda x: x[0]
-    get_col_type = lambda x: x[1]
-    get_col_val = lambda x: x[2]
-    columns = zip(names_list, types_list, values_list)
+    columns = [
+        Column(names_list[i], types_list[i], values_list[i])
+        for i in range(len(names_list))
+    ]
 
     if record_info.num_fields == 0:
         for column in columns:
@@ -325,8 +334,8 @@ def build_ayx_record_from_list(
         record_creator = record_info.construct_record_creator()
 
     for column in columns:
-        field = record_info.get_field_by_name(get_col_name(column))
-        set_field_value(field, get_col_val(column), record_creator)
+        field = record_info.get_field_by_name(column.name)
+        set_field_value(field, column.value, record_creator)
 
     ayx_record = record_creator.finalize_record()
 
@@ -352,10 +361,8 @@ def add_output_column_to_record_info(
     ---------
     None
     """
-    get_col_name = lambda x: x[0]
-    get_col_type = lambda x: x[1]
     add_new_field_to_record_info(
-        record_info_out, get_col_name(output_column), get_col_type(output_column)
+        record_info_out, output_column.name, output_column.type
     )
 
 
@@ -369,11 +376,10 @@ def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
             col_names = input_interface.interface_record_vars.column_names
         else:
             if pd is None:
-                plugin_utils.log_and_raise_error(
-                    plugin.logging,
-                    ImportError,
-                    "The Pandas library must be installed to use the dataframe type.",
-                )
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
 
             input_data = pd.DataFrame(
                 input_interface.interface_record_vars.record_list_in,

@@ -1,6 +1,7 @@
 # Built in Libraries
 import pdb
 import copy
+import logging
 from functools import wraps
 from typing import Callable, Iterable, Union, Optional, List
 
@@ -12,15 +13,7 @@ import AlteryxPythonSDK as sdk
 
 # Custom libraries
 # import ml_shared.utilities as utils
-import snakeplane.plugin_utilities as plugin_utils
-import snakeplane.interface_utilities as interface_utils
-from snakeplane.helper_classes import (
-    AyxPlugin,
-    AyxPluginInterface,
-    InputManager,
-    OutputManager,
-    OutputAnchor,
-)
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
 # TODO: Finish docstrings
 # TODO: Add error handling/logging
@@ -85,16 +78,19 @@ class PluginFactory:
         setattr(self._plugin, "tool_name", tool_name)
 
         # Initialize all required methods with default behavior
-        self.build_pi_init(plugin_utils.noop),
-        self.build_pi_add_incoming_connection(plugin_utils.noop),
-        self.build_pi_push_all_records(plugin_utils.noop),
+        def noop(*args, **kwargs) -> None:
+            pass
+
+        self.build_pi_init(noop),
+        self.build_pi_add_incoming_connection(noop),
+        self.build_pi_push_all_records(noop),
         self.build_pi_add_outgoing_connection(lambda *args, **kwargs: True)
-        self.build_pi_close(plugin_utils.noop)
+        self.build_pi_close(noop)
 
         self.build_ii_init(lambda *args, **kwargs: True),
         self.build_ii_push_record(lambda *args, **kwargs: True),
-        self.build_ii_update_progress(plugin_utils.noop),
-        self.build_ii_close(plugin_utils.noop)
+        self.build_ii_update_progress(noop),
+        self.build_ii_close(noop)
 
     def build_pi_init(self, func: object):
         """
@@ -192,15 +188,16 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
-            if len(current_plugin.state_vars.required_input_names) == 0:
+            if len(current_plugin._state_vars.required_input_names) == 0:
                 # Only call the users defined function when there are no required inputs, since this is the
                 # only scenario where something interesting happens in this function
                 func(current_plugin, n_record_limit)
                 return True
 
-            current_plugin.logging.display_error_msg("Missing Incoming Connection(s)")
-            current_plugin.set_initialization_state(False)
-            return False
+            err_str = "Missing Incoming Connection(s)"
+            logger = logging.getLogger(__name__)
+            logger.error(err_str, stack_info=True)
+            raise AssertionError(err_str)
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
 
@@ -252,14 +249,18 @@ class PluginFactory:
             if b_has_errors or current_plugin.is_update_only_mode():
                 return
 
-            if not current_plugin.all_inputs_completed():
-                current_plugin.logging.display_error_msg(
-                    "Missing Incoming connection(s)"
-                )
-            else:
-                func(current_plugin)
+            # TODO: Figure out why pi_close isn't called after all ii_close's
+            # The commented out error below is causing failures because the pi_close method
+            # isn't called when we think it should be...
 
-                current_plugin.close_all_outputs()
+            # if not current_plugin.all_inputs_completed():
+            #     current_plugin.logging.display_error_msg(
+            #         "Missing Incoming Connection(s)"
+            #     )
+            # else:
+            func(current_plugin)
+
+            current_plugin.close_all_outputs()
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
@@ -287,12 +288,12 @@ class PluginFactory:
 
             current_interface.set_record_info_in(record_info_in)
 
-            initSuccess = func(current_interface, record_info_in)
+            init_success = func(current_interface, record_info_in)
 
-            if not initSuccess:
+            if not init_success:
                 current_plugin.set_initialization_state(False)
 
-            return initSuccess
+            return init_success
 
         setattr(self._plugin.plugin_interface, "ii_init", wrap_ii_init)
 
@@ -326,7 +327,7 @@ class PluginFactory:
             ):
                 return False
 
-            record, column_names, column_types = current_interface.create_record_for_input_records_list(
+            _, column_names, column_types = current_interface.create_record_for_input_records_list(
                 in_record
             )
 
@@ -357,14 +358,12 @@ class PluginFactory:
         """
 
         @wraps(func)
-        def wrap_ii_update_progress(*original_args, **original_kwargs):
-            current_interface = original_args[0]
-            d_percentage = original_args[1]
+        def wrap_ii_update_progress(current_interface, d_percentage):
             current_plugin = current_interface.parent
 
             current_plugin.update_progress(d_percentage)
 
-            return func(*original_args, **original_kwargs)
+            return func(current_interface, d_percentage)
 
         setattr(
             self._plugin.plugin_interface, "ii_update_progress", wrap_ii_update_progress
@@ -394,9 +393,9 @@ class PluginFactory:
             if current_plugin.is_update_only_mode():
                 return
 
-            func(current_plugin)
-
             current_interface.set_completed()
+
+            return func(current_plugin)
 
         setattr(self._plugin.plugin_interface, "ii_close", wrap_ii_close)
 
@@ -578,17 +577,19 @@ class PluginFactory:
 
         def decorator_process_data(func):
             # TODO: Move to helper?
-            def batch_pi_close(plugin):
-                # Call user function to batch process data
-                func(
-                    plugin.input_manager,
-                    plugin.output_manager,
-                    plugin.user_data,
-                    plugin.logging,
-                )
+            def batch_ii_close(plugin):
 
-                # Flush all output records set by user
-                plugin.push_all_output_records()
+                if plugin.all_inputs_completed():
+                    # Call user function to batch process data
+                    func(
+                        plugin.input_manager,
+                        plugin.output_manager,
+                        plugin.user_data,
+                        plugin.logging,
+                    )
+
+                    # Flush all output records set by user
+                    plugin.push_all_output_records()
 
             # TODO: Move to helper?
             def stream_ii_push_record(plugin, current_interface, in_record):
@@ -614,16 +615,13 @@ class PluginFactory:
                         in_record
                     )
                 )
-                self.build_pi_close(batch_pi_close)
+                self.build_ii_close(batch_ii_close)
             elif mode.lower() == "stream":
                 self.build_ii_push_record(stream_ii_push_record)
             elif mode.lower() == "generate":
                 # TODO: Add generation options
-                pass
+                raise NotImplementedError()
             else:
-                self._plugin.logging.display_error_msg(
-                    "Mode parameter of process_data must be one of 'batch'|'stream'"
-                )
                 raise ValueError(
                     "Mode parameter of process_data must be one of 'batch'|'stream'"
                 )

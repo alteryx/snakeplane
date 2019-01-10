@@ -2,6 +2,7 @@
 import pickle
 import pdb
 import os
+import logging
 from functools import partial
 from types import SimpleNamespace
 from typing import Callable, Iterable, Union, Optional, List, Tuple
@@ -20,7 +21,6 @@ import AlteryxPythonSDK as sdk
 # Custom libraries
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
-
 
 class AyxPlugin:
     def __init__(
@@ -78,7 +78,7 @@ class AyxPlugin:
         for connection in plugin_utils.get_xml_config_input_connections(
             self._state_vars.config_data
         ):
-            self._state_vars.input_anchors[connection["@Name"]] = None
+            self._state_vars.input_anchors[connection["@Name"]] = []
 
             # Track names of the inputs that are required for this tool to run
             if connection["@Optional"] == "False":
@@ -92,6 +92,45 @@ class AyxPlugin:
         # Custom data
         self.user_data = SimpleNamespace()
 
+        # Set up a custom logger so that errors, warnings and info are sent to designer
+        self.set_logging()
+
+    def set_logging(self):
+        plugin = self
+        class AyxLogger(logging.Logger):
+            def __init__(self, name, level=logging.NOTSET):
+                self._plugin = plugin
+                super(AyxLogger, self).__init__(name, level)
+
+                # Set the log level for alteryx plugins
+                self.setLevel(logging.DEBUG)
+
+            def debug(self, msg, *args, **kwargs):
+                self._plugin.logging.display_info_msg(msg)
+                super(AyxLogger, self).debug(msg, *args, **kwargs)
+
+            def info(self, msg, *args, **kwargs):
+                self._plugin.logging.display_info_msg(msg)
+                super(AyxLogger, self).info(msg, *args, **kwargs)
+
+            def warning(self, msg, *args, **kwargs):
+                self._plugin.logging.display_warn_msg(msg)
+                super(AyxLogger, self).warning(msg, *args, **kwargs)
+
+            def error(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).error(msg, *args, **kwargs)
+
+            def critical(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).critical(msg, *args, **kwargs)
+
+            def exception(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).exception(msg, *args, **kwargs)
+
+        logging.setLoggerClass(AyxLogger)
+
     def save_output_anchor_refs(self):
         # Get references to the output anchors
         for anchor_name in self._state_vars.output_anchors:
@@ -102,7 +141,7 @@ class AyxPlugin:
             )
 
     def save_interface(self, name, interface):
-        self._state_vars.input_anchors[name] = interface
+        self._state_vars.input_anchors[name].append(interface)
 
     def is_update_only_mode(self):
         return (
@@ -139,8 +178,10 @@ class AyxPlugin:
         all_inputs_completed = True
         if self.is_initialized():
             for name in self._state_vars.required_input_names:
-                anchor = self._state_vars.input_anchors[name]
-                if anchor is None or not anchor.is_complete():
+                connections = self._state_vars.input_anchors[name]
+                if len(connections) == 0 or not all(
+                    [connection.is_complete() for connection in connections]
+                ):
                     all_inputs_completed = False
         else:
             all_inputs_completed = False
@@ -192,7 +233,8 @@ class AyxPlugin:
             This function has side effects on plugin, and therefore has no return
         """
         for _, anchor in self._state_vars.input_anchors.items():
-            anchor._interface_record_vars.record_list_in = []
+            for connection in anchor:
+                connection._interface_record_vars.record_list_in = []
 
     def create_record_info(self):
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
@@ -288,11 +330,10 @@ class AyxPluginInterface:
             return self._interface_record_vars.record_list_in
         else:
             if pd is None:
-                plugin_utils.log_and_raise_error(
-                    self.parent.logging,
-                    ImportError,
-                    "The Pandas library must be installed to allow dataframe as input_type.",
-                )
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
 
             return pd.DataFrame(
                 self._interface_record_vars.record_list_in,
@@ -314,6 +355,9 @@ class OutputManager:
 
     def get_anchor(self, name):
         return self._plugin._state_vars.output_anchors.get(name)
+
+    def get_temp_file_path(self):
+        return self._plugin._engine_vars.alteryx_engine.create_temp_file_name()
 
 
 class OutputAnchor:
