@@ -620,7 +620,7 @@ class PluginFactory:
                 self.build_ii_push_record(stream_ii_push_record)
             elif mode.lower() == "generate":
                 # TODO: Add generation options
-                pass
+                raise NotImplementedError()
             else:
                 raise ValueError(
                     "Mode parameter of process_data must be one of 'batch'|'stream'"
