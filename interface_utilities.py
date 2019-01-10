@@ -3,6 +3,7 @@ import os
 from collections import namedtuple
 from typing import Union, Any, List, Optional, cast, Set, Dict, Tuple
 import pdb
+import logging
 
 # 3rd Party Libraries
 try:
@@ -12,9 +13,6 @@ except:
 
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
-
-# Custom libraries
-from . import plugin_utilities as plugin_utils
 
 # Create a column named tuple for use in below functions
 Column = namedtuple("Column", ["name", "type", "value"])
@@ -44,19 +42,26 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         dobule, bool, or string. The returned value represents the parsed/typed 
         value of the desired field from the input record
     """
-    field_type = str(field.type)
-    if field_type == "blob":
-        return field.get_as_blob(record)
-    elif any(field_type in s for s in ["byte", "int16", "int32"]):
-        return field.get_as_int32(record)
-    elif field_type == "int64":
-        return field.get_as_int64(record)
-    elif any(field_type in s for s in ["float"]):
-        return field.get_as_double(record)
-    elif field_type == "bool":
-        return field.get_as_bool(record)
-    else:
-        return field.get_as_string(record)
+    try:
+        return {
+            "blob": field.get_as_blob,
+            "byte": field.get_as_int32,
+            "int16": field.get_as_int32,
+            "int32": field.get_as_int32,
+            "int64": field.get_as_int64,
+            "float": field.get_as_double,
+            "bool": field.get_as_bool,
+            "string": field.get_as_string,
+            "v_string": field.get_as_string,
+            "v_wstring": field.get_as_string,
+            "wstring": field.get_as_string,
+        }[str(field.type)](record)
+    except KeyError:
+        # The type wasn't found, throw an error to let the use know
+        err_str = f'Failed to automatically convert field type "{str(field.type)}" due to unidentified type name.'
+        logger = logging.getLogger(__name__)
+        logger.error(err_str, stack_info=True)
+        raise TypeError(err_str)
 
 
 # interface
@@ -369,11 +374,10 @@ def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
             col_names = input_interface.interface_record_vars.column_names
         else:
             if pd is None:
-                plugin_utils.log_and_raise_error(
-                    plugin.logging,
-                    ImportError,
-                    "The Pandas library must be installed to use the dataframe type.",
-                )
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
 
             input_data = pd.DataFrame(
                 input_interface.interface_record_vars.record_list_in,

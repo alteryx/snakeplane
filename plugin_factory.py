@@ -1,6 +1,7 @@
 # Built in Libraries
 import pdb
 import copy
+import logging
 from functools import wraps
 from typing import Callable, Iterable, Union, Optional, List
 
@@ -12,15 +13,7 @@ import AlteryxPythonSDK as sdk
 
 # Custom libraries
 # import ml_shared.utilities as utils
-import snakeplane.plugin_utilities as plugin_utils
-import snakeplane.interface_utilities as interface_utils
-from snakeplane.helper_classes import (
-    AyxPlugin,
-    AyxPluginInterface,
-    InputManager,
-    OutputManager,
-    OutputAnchor,
-)
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
 # TODO: Finish docstrings
 # TODO: Add error handling/logging
@@ -85,16 +78,19 @@ class PluginFactory:
         setattr(self._plugin, "tool_name", tool_name)
 
         # Initialize all required methods with default behavior
-        self.build_pi_init(plugin_utils.noop),
-        self.build_pi_add_incoming_connection(plugin_utils.noop),
-        self.build_pi_push_all_records(plugin_utils.noop),
+        def noop(*args, **kwargs) -> None:
+            pass
+
+        self.build_pi_init(noop),
+        self.build_pi_add_incoming_connection(noop),
+        self.build_pi_push_all_records(noop),
         self.build_pi_add_outgoing_connection(lambda *args, **kwargs: True)
-        self.build_pi_close(plugin_utils.noop)
+        self.build_pi_close(noop)
 
         self.build_ii_init(lambda *args, **kwargs: True),
         self.build_ii_push_record(lambda *args, **kwargs: True),
-        self.build_ii_update_progress(plugin_utils.noop),
-        self.build_ii_close(plugin_utils.noop)
+        self.build_ii_update_progress(noop),
+        self.build_ii_close(noop)
 
     def build_pi_init(self, func: object):
         """
@@ -192,15 +188,16 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
-            if len(current_plugin.state_vars.required_input_names) == 0:
+            if len(current_plugin._state_vars.required_input_names) == 0:
                 # Only call the users defined function when there are no required inputs, since this is the
                 # only scenario where something interesting happens in this function
                 func(current_plugin, n_record_limit)
                 return True
 
-            current_plugin.logging.display_error_msg("Missing Incoming Connection(s)")
-            current_plugin.set_initialization_state(False)
-            return False
+            err_str = "Missing Incoming Connection(s)"
+            logger = logging.getLogger(__name__)
+            logger.error(err_str, stack_info=True)
+            raise AssertionError(err_str)
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
 

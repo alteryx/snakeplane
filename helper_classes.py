@@ -2,6 +2,7 @@
 import pickle
 import pdb
 import os
+import logging
 from functools import partial
 from types import SimpleNamespace
 from typing import Callable, Iterable, Union, Optional, List, Tuple
@@ -20,7 +21,6 @@ import AlteryxPythonSDK as sdk
 # Custom libraries
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
-
 
 class AyxPlugin:
     def __init__(
@@ -91,6 +91,45 @@ class AyxPlugin:
 
         # Custom data
         self.user_data = SimpleNamespace()
+
+        # Set up a custom logger so that errors, warnings and info are sent to designer
+        self.set_logging()
+
+    def set_logging(self):
+        plugin = self
+        class AyxLogger(logging.Logger):
+            def __init__(self, name, level=logging.NOTSET):
+                self._plugin = plugin
+                super(AyxLogger, self).__init__(name, level)
+
+                # Set the log level for alteryx plugins
+                self.setLevel(logging.DEBUG)
+
+            def debug(self, msg, *args, **kwargs):
+                self._plugin.logging.display_info_msg(msg)
+                super(AyxLogger, self).debug(msg, *args, **kwargs)
+
+            def info(self, msg, *args, **kwargs):
+                self._plugin.logging.display_info_msg(msg)
+                super(AyxLogger, self).info(msg, *args, **kwargs)
+
+            def warning(self, msg, *args, **kwargs):
+                self._plugin.logging.display_warn_msg(msg)
+                super(AyxLogger, self).warning(msg, *args, **kwargs)
+
+            def error(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).error(msg, *args, **kwargs)
+
+            def critical(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).critical(msg, *args, **kwargs)
+
+            def exception(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).exception(msg, *args, **kwargs)
+
+        logging.setLoggerClass(AyxLogger)
 
     def save_output_anchor_refs(self):
         # Get references to the output anchors
@@ -291,11 +330,10 @@ class AyxPluginInterface:
             return self._interface_record_vars.record_list_in
         else:
             if pd is None:
-                plugin_utils.log_and_raise_error(
-                    self.parent.logging,
-                    ImportError,
-                    "The Pandas library must be installed to allow dataframe as input_type.",
-                )
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
 
             return pd.DataFrame(
                 self._interface_record_vars.record_list_in,
