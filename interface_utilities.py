@@ -124,7 +124,9 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         This is a stateful function that produces side effects by modifying
         the record_creator object.  
     """
-    if field.type == sdk.FieldType.bool:
+    if value is None:
+        field.set_from_null(record_creator, value)
+    elif field.type == sdk.FieldType.bool:
         field.set_from_bool(record_creator, value)
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, value)
