@@ -50,6 +50,9 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
             "int32": field.get_as_int32,
             "int64": field.get_as_int64,
             "float": field.get_as_double,
+            "date": field.get_as_string,
+            "time": field.get_as_string,
+            "datetime": field.get_as_string,
             "bool": field.get_as_bool,
             "string": field.get_as_string,
             "v_string": field.get_as_string,
@@ -132,7 +135,7 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         the record_creator object.  
     """
     if value is None:
-        field.set_from_null(record_creator, value)
+        field.set_null(record_creator)
     elif field.type == sdk.FieldType.bool:
         field.set_from_bool(record_creator, value)
     elif field.type == sdk.FieldType.blob:
