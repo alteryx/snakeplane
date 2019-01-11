@@ -111,6 +111,9 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_init(current_plugin, config_xml):
+            if current_plugin.is_update_only_mode():
+                return
+
             current_plugin.save_output_anchor_refs()
 
             # Parse XML and save
