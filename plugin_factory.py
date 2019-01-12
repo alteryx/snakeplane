@@ -327,13 +327,12 @@ class PluginFactory:
             ):
                 return False
 
-            _, column_names, column_types = current_interface.create_record_for_input_records_list(
+            _, column_metadata = current_interface.create_record_for_input_records_list(
                 in_record
             )
 
             # Attach local column info to interface object
-            current_interface.set_col_names(column_names)
-            current_interface.set_col_types(column_types)
+            current_interface.set_col_metadata(column_metadata)
 
             func(current_plugin, current_interface, in_record)
             return True

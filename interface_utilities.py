@@ -15,7 +15,7 @@ except:
 import AlteryxPythonSDK as sdk
 
 # Create a column named tuple for use in below functions
-Column = namedtuple("Column", ["name", "type", "value"])
+Column = namedtuple("Column", ["name", "type", "size", "source", "description", "value"])
 
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
@@ -82,6 +82,29 @@ def get_column_names_list(record_info_in: object) -> List[str]:
         A list of the column names in string format
     """
     return [field.name for field in record_info_in]
+
+# interface
+
+
+def get_column_metadata(record_info_in: object) -> dict:
+    """
+    Collects the column names, types, sizes, sources, and descriptions from an Alteryx record info object.
+
+    Parameters
+    ----------
+    record_info_in : object
+        An Alteryx RecordInfo object
+
+    Returns
+    -------
+    List[dict]
+        A list of column metadata
+    """
+    return {"name": [field.name for field in record_info_in],
+            "type": [field.type for field in record_info_in],
+            "size": [field.size for field in record_info_in],
+            "source": [field.source for field in record_info_in],
+            "description": [field.description for field in record_info_in]}
 
 
 # interface
@@ -160,7 +183,7 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
 
 # interface
 def add_new_field_to_record_info(
-    record_info: object, field_name: str, field_type: object, field_size: int = None
+    record_info: object, field_name: str, field_type: object, field_size: int, field_source: str, field_desc: str
 ) -> None:
     """
     Attaches a field of specified name, type, and size to the specified Alteryx
@@ -199,7 +222,13 @@ def add_new_field_to_record_info(
     field_size : int 
         An integer specifying the size of the desired Alteryx Field. This
         option is ignored for primitive types, and is only used for string,
-        blob, and spatial types.   
+        blob, and spatial types.  
+
+    field_source : str
+        Where this field came from
+
+    field_desc
+        A short description of what this field is 
 
     Returns
     ---------
@@ -219,12 +248,12 @@ def add_new_field_to_record_info(
     elif field_size is None:
         field_size = 0
 
-    record_info.add_field(field_name, field_type, field_size)
+    record_info.add_field(field_name, field_type, size=field_size, source=field_source, description=field_desc)
 
 
 # interface
 def build_ayx_record_info(
-    names_list: List[str], types_list: List[object], record_info: object
+    metadata: dict, record_info: object
 ) -> None:
     """
     Populates a an Alteryx RecordInfo object with field objects based on the 
@@ -233,14 +262,11 @@ def build_ayx_record_info(
 
     Parameters
     ---------- 
-    names_list : List[str] 
-        A list of the names for each respective column.  These are used to generate
-        the Alteryx RecordInfo object (if it doesn't already exist) for the names
-        of each respective Field object. 
-
-    types_list : List[object] 
-        A list of the respective Alteryx FieldType objects for each column in the 
-        values_list.  
+    metadata : dict
+        A dict containing all of the names, types, sizes, sources,
+        and descriptions of each field. These are used to generate 
+        the Alteryx RecordInfo object (if it doesn't already exist)
+        for the names of each respective Field object.
 
     record_info : object
         An Alteryx RecordInfo object.
@@ -253,9 +279,10 @@ def build_ayx_record_info(
     None
         This is a stateful function that produces side effects by modifying
         the record_info object. 
+
     """
     output_columns = [
-        Column(names_list[i], types_list[i], None) for i in range(len(names_list))
+        Column(metadata['name'][i], metadata['type'][i], metadata['size'][i], metadata['source'][i], metadata['description'][i], None) for i in range(len(metadata['name']))
     ]
 
     for output_column in output_columns:
@@ -265,8 +292,7 @@ def build_ayx_record_info(
 # interface
 def build_ayx_record_from_list(
     values_list: List[Any],
-    names_list: List[str],
-    types_list: List[object],
+    metadata_list: List[dict],
     record_info: object,
     record_creator: Optional[object] = None,
 ) -> Tuple[object, object]:
@@ -285,14 +311,12 @@ def build_ayx_record_from_list(
         data.  The 0th index of the list represents data in the first column
         of the record, and so on.    
 
-    names_list : List[str] 
-        A list of the names for each respective column.  These are used to generate
+    metadata_list : List[dict]
+        (This might not be a list)
+        A list of the names, types, sizes, sources, and descriptions
+        for each respective column. These are used to generate
         the Alteryx RecordInfo object (if it doesn't already exist) for the names
         of each respective Field object. 
-
-    types_list : List[object] 
-        A list of the respective Alteryx FieldType objects for each column in the 
-        values_list.  
 
     record_info : object
         An Alteryx RecordInfo object.
@@ -324,8 +348,8 @@ def build_ayx_record_from_list(
             create a record, and returns it.  
     """
     columns = [
-        Column(names_list[i], types_list[i], values_list[i])
-        for i in range(len(names_list))
+        Column(metadata_list['name'][i], metadata_list['type'][i], metadata_list['size'][i], metadata_list['source'][i], metadata_list['description'][i], values_list[i])
+        for i in range(len(metadata_list['name']))
     ]
 
     if record_info.num_fields == 0:
@@ -365,7 +389,7 @@ def add_output_column_to_record_info(
     None
     """
     add_new_field_to_record_info(
-        record_info_out, output_column.name, output_column.type
+        record_info_out, output_column.name, output_column.type, output_column.size, output_column.source, output_column.description
     )
 
 
