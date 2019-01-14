@@ -107,7 +107,7 @@ class AyxPlugin:
                 super(AyxLogger, self).__init__(name, level)
 
                 # Set the log level for alteryx plugins
-                self.setLevel(logging.DEBUG)
+                self.setLevel(level)
 
             def debug(self, msg, *args, **kwargs):
                 self._plugin.logging.display_info_msg(msg)
@@ -254,7 +254,7 @@ class AyxPluginInterface:
         self.parent = parent
 
         self._interface_record_vars = SimpleNamespace(
-            record_info_in=None, record_list_in=[], column_metadata=[]
+            record_info_in=None, record_list_in=[], column_metadata={}
         )
 
         self._interface_state = SimpleNamespace(
@@ -389,6 +389,17 @@ class OutputAnchor:
                     num_of_columns - len(self._metadata[attribute])))
         return self._metadata
 
+    def push_metadata(self: object, plugin: object) -> None:
+        out_col_metadata = self.get_col_metadata()
+
+        self._record_info_out = plugin.create_record_info()
+
+        interface_utils.build_ayx_record_info(
+            out_col_metadata, self._record_info_out
+        )
+
+        self._handler.init(self._record_info_out)
+
     def push_records(self: object, plugin: object) -> None:
         """
         Flush all records for an output anchor
@@ -413,16 +424,7 @@ class OutputAnchor:
             return
 
         if not self._record_info_out:
-            # TODO repackage all of this into a util function.
-            # use out_col_names_list and out_col_types_list to
-            # create new record info out
-            self._record_info_out = plugin.create_record_info()
-
-            interface_utils.build_ayx_record_info(
-                out_col_metadata, self._record_info_out
-            )
-
-            self._handler.init(self._record_info_out)
+            self.push_metadata(plugin)
 
         for value in out_values_list:
             out_record, self._record_creator = interface_utils.build_ayx_record_from_list(
