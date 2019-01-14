@@ -398,13 +398,15 @@ class OutputAnchor:
     def push_metadata(self: object, plugin: object) -> None:
         out_col_metadata = self.get_col_metadata()
 
-        self._record_info_out = plugin.create_record_info()
+        if self._record_info_out is None:
 
-        interface_utils.build_ayx_record_info(
-            out_col_metadata, self._record_info_out
-        )
+            self._record_info_out = plugin.create_record_info()
 
-        self._handler.init(self._record_info_out)
+            interface_utils.build_ayx_record_info(
+                out_col_metadata, self._record_info_out
+            )
+
+            self._handler.init(self._record_info_out)
 
     def push_records(self: object, plugin: object) -> None:
         """
