@@ -333,7 +333,7 @@ class AyxPluginInterface:
 
             return pd.DataFrame(
                 self._interface_record_vars.record_list_in,
-                columns=self._interface_record_vars.column_names,
+                columns=self._interface_record_vars.column_metadata['name'],
             )
 
 
