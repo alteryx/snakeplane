@@ -202,6 +202,9 @@ class AyxPlugin:
     def set_initialization_state(self, state):
         self._state_vars.is_initialized = state
 
+    def is_initialized(self):
+        return self._state_vars.is_initialized
+
     def push_all_output_records(self: object) -> None:
         """
         For each output anchor on the plugin, flush all the output records

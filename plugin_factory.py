@@ -111,10 +111,10 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_init(current_plugin, config_xml):
+            current_plugin.save_output_anchor_refs()
+
             if current_plugin.is_update_only_mode():
                 return
-
-            current_plugin.save_output_anchor_refs()
 
             # Parse XML and save
             current_plugin.workflow_config = xmltodict.parse(config_xml)[
@@ -125,7 +125,7 @@ class PluginFactory:
             val = func(current_plugin)
 
             # Boilerplate Side Effects
-            current_plugin.set_initialization_state(True)
+            current_plugin.set_initialization_state(val)
 
             return val
 
@@ -576,6 +576,8 @@ class PluginFactory:
         def decorator_process_data(func):
             # TODO: Move to helper?
             def batch_ii_close(plugin):
+                if not plugin.is_initialized():
+                    return
 
                 if plugin.all_inputs_completed():
                     # Call user function to batch process data
@@ -591,6 +593,9 @@ class PluginFactory:
 
             # TODO: Move to helper?
             def stream_ii_push_record(plugin, current_interface, in_record):
+                if not plugin.is_initialized():
+                    return
+
                 # Since we're streaming, we should clear any accumulated records
                 plugin.clear_accumulated_records()
 
