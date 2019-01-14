@@ -51,6 +51,9 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
             "int64": field.get_as_int64,
             "float": field.get_as_double,
             "double": field.get_as_double,
+            "date": field.get_as_string,
+            "time": field.get_as_string,
+            "datetime": field.get_as_string,
             "bool": field.get_as_bool,
             "string": field.get_as_string,
             "v_string": field.get_as_string,
@@ -132,7 +135,9 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         This is a stateful function that produces side effects by modifying
         the record_creator object.  
     """
-    if field.type == sdk.FieldType.bool:
+    if value is None:
+        field.set_null(record_creator)
+    elif field.type == sdk.FieldType.bool:
         field.set_from_bool(record_creator, value)
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, value)
@@ -363,6 +368,35 @@ def add_output_column_to_record_info(
     add_new_field_to_record_info(
         record_info_out, output_column.name, output_column.type
     )
+
+
+# interface
+def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
+    batch_records = {}
+    for input_name, input_interface in plugin.state_vars.input_anchors.items():
+        col_types = input_interface.interface_record_vars.column_types
+        if plugin.process_data_input_type == "list":
+            input_data = input_interface.interface_record_vars.record_list_in
+            col_names = input_interface.interface_record_vars.column_names
+        else:
+            if pd is None:
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
+
+            input_data = pd.DataFrame(
+                input_interface.interface_record_vars.record_list_in,
+                columns=input_interface.interface_record_vars.column_names,
+            )
+            col_names = None
+
+        batch_records[input_name] = {
+            "data": input_data,
+            "metadata": {"col_names": col_names, "col_types": col_types},
+        }
+
+    return batch_records
 
 
 # interface
