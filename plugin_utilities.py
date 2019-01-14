@@ -99,6 +99,9 @@ def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any
         List where each entry corresponds to an output anchor. Each entry
         is an ordered dictionary with anchor metadata.
     """
+    if "OutputConnections" not in get_xml_config_gui_settings(xml_dict):
+        return []
+
     connections = get_xml_config_gui_settings(xml_dict)["OutputConnections"][
         "Connection"
     ]
