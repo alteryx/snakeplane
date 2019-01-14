@@ -2,6 +2,7 @@
 import pickle
 import pdb
 import os
+import logging
 from functools import partial
 from types import SimpleNamespace
 from typing import Callable, Iterable, Union, Optional, List, Tuple
@@ -78,11 +79,12 @@ class AyxPlugin:
         for connection in plugin_utils.get_xml_config_input_connections(
             self._state_vars.config_data
         ):
-            self._state_vars.input_anchors[connection["@Name"]] = None
+            self._state_vars.input_anchors[connection["@Name"]] = []
 
             # Track names of the inputs that are required for this tool to run
             if connection["@Optional"] == "False":
-                self._state_vars.required_input_names.append(connection["@Name"])
+                self._state_vars.required_input_names.append(
+                    connection["@Name"])
 
         for connection in plugin_utils.get_xml_config_output_connections(
             self._state_vars.config_data
@@ -91,6 +93,46 @@ class AyxPlugin:
 
         # Custom data
         self.user_data = SimpleNamespace()
+
+        # Set up a custom logger so that errors, warnings and info are sent to designer
+        self.set_logging()
+
+    def set_logging(self):
+        plugin = self
+
+        class AyxLogger(logging.Logger):
+            def __init__(self, name, level=logging.NOTSET):
+                self._plugin = plugin
+                super(AyxLogger, self).__init__(name, level)
+
+                # Set the log level for alteryx plugins
+                self.setLevel(level)
+
+            def debug(self, msg, *args, **kwargs):
+                self._plugin.logging.display_info_msg(msg)
+                super(AyxLogger, self).debug(msg, *args, **kwargs)
+
+            def info(self, msg, *args, **kwargs):
+                self._plugin.logging.display_info_msg(msg)
+                super(AyxLogger, self).info(msg, *args, **kwargs)
+
+            def warning(self, msg, *args, **kwargs):
+                self._plugin.logging.display_warn_msg(msg)
+                super(AyxLogger, self).warning(msg, *args, **kwargs)
+
+            def error(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).error(msg, *args, **kwargs)
+
+            def critical(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).critical(msg, *args, **kwargs)
+
+            def exception(self, msg, *args, **kwargs):
+                self._plugin.logging.display_error_msg(msg)
+                super(AyxLogger, self).exception(msg, *args, **kwargs)
+
+        logging.setLoggerClass(AyxLogger)
 
     def save_output_anchor_refs(self):
         # Get references to the output anchors
@@ -102,7 +144,7 @@ class AyxPlugin:
             )
 
     def save_interface(self, name, interface):
-        self._state_vars.input_anchors[name] = interface
+        self._state_vars.input_anchors[name].append(interface)
 
     def is_update_only_mode(self):
         return (
@@ -139,8 +181,10 @@ class AyxPlugin:
         all_inputs_completed = True
         if self.is_initialized():
             for name in self._state_vars.required_input_names:
-                anchor = self._state_vars.input_anchors[name]
-                if anchor is None or not anchor.is_complete():
+                connections = self._state_vars.input_anchors[name]
+                if len(connections) == 0 or not all(
+                    [connection.is_complete() for connection in connections]
+                ):
                     all_inputs_completed = False
         else:
             all_inputs_completed = False
@@ -192,7 +236,8 @@ class AyxPlugin:
             This function has side effects on plugin, and therefore has no return
         """
         for _, anchor in self._state_vars.input_anchors.items():
-            anchor._interface_record_vars.record_list_in = []
+            for connection in anchor:
+                connection._interface_record_vars.record_list_in = []
 
     def create_record_info(self):
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
@@ -207,7 +252,7 @@ class AyxPluginInterface:
         self.parent = parent
 
         self._interface_record_vars = SimpleNamespace(
-            record_info_in=None, record_list_in=[], column_names=[], column_types=[]
+            record_info_in=None, record_list_in=[], column_metadata={}
         )
 
         self._interface_state = SimpleNamespace(
@@ -216,7 +261,7 @@ class AyxPluginInterface:
 
     def create_record_for_input_records_list(
         self: object, in_record: object
-    ) -> Tuple[List[Union[int, float, bool, str, bytes]], List[str], List[object]]:
+    ) -> Tuple[List[Union[int, float, bool, str, bytes]], dict]:
         """
         Creates a list of values "record" from an Alteryx RecordRef object
 
@@ -229,32 +274,29 @@ class AyxPluginInterface:
             An Alteryx RecordRef object for the record to be processed
         Returns
         ---------
-        Tuple[List[int, float, bool, str, bytes], List[str], List[object]]
-            The return takes the form (record, column_names, column_types)
+        Tuple[List[int, float, bool, str, bytes], dict]
+            The return takes the form (record, metadata)
             where:
                 record: A list of the parsed record values
-                column_names: A list of the column names in string form
-                column_types: A list of the column names per the AlteryxSDK
+                metadata: a dict containing the names, types, sizes, 
+                sources, and descriptions of each field
         """
         record_info = self._interface_record_vars.record_info_in
-        column_names = interface_utils.get_column_names_list(record_info)
-        column_types = interface_utils.get_column_types_list(record_info)
+        column_metadata = interface_utils.get_column_metadata(record_info)
 
         record = [
             interface_utils.get_dynamic_type_value(field, in_record)
             for field in record_info
         ]
-        return record, column_names, column_types
+        return record, column_metadata
 
     def accumulate_record(self, record):
-        row, column_names, column_types = self.create_record_for_input_records_list(
+        row, column_metadata = self.create_record_for_input_records_list(
             record
         )
 
         # Attach local column info to interface object
-        self.set_col_names(column_names)
-        self.set_col_types(column_types)
-
+        self.set_col_metadata(column_metadata)
         self._interface_record_vars.record_list_in.append(row)
 
     def set_record_info_in(self, record_info):
@@ -266,17 +308,11 @@ class AyxPluginInterface:
     def set_completed(self):
         self._interface_state.input_complete = True
 
-    def get_col_names(self):
-        return self._interface_record_vars.column_names
+    def get_col_metadata(self):
+        return self._interface_record_vars.column_metadata
 
-    def get_col_types(self):
-        return self._interface_record_vars.column_types
-
-    def set_col_names(self, val):
-        self._interface_record_vars.column_names = val
-
-    def set_col_types(self, val):
-        self._interface_record_vars.column_types = val
+    def set_col_metadata(self, val):
+        self._interface_record_vars.column_metadata = val
 
     def get_data(self):
         if (
@@ -288,15 +324,14 @@ class AyxPluginInterface:
             return self._interface_record_vars.record_list_in
         else:
             if pd is None:
-                plugin_utils.log_and_raise_error(
-                    self.parent.logging,
-                    ImportError,
-                    "The Pandas library must be installed to allow dataframe as input_type.",
-                )
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
 
             return pd.DataFrame(
                 self._interface_record_vars.record_list_in,
-                columns=self._interface_record_vars.column_names,
+                columns=self._interface_record_vars.column_metadata['name'],
             )
 
 
@@ -315,12 +350,20 @@ class OutputManager:
     def get_anchor(self, name):
         return self._plugin._state_vars.output_anchors.get(name)
 
+    def get_temp_file_path(self):
+        return self._plugin._engine_vars.alteryx_engine.create_temp_file_name()
+
 
 class OutputAnchor:
     def __init__(self):
         self._data = None
-        self._col_names = None
-        self._col_types = None
+        self._metadata = {
+            "name": [],
+            "type": [],
+            "size": [],
+            "source": [],
+            "description": []
+        }
         self._record_info_out = None
         self._record_creator = None
         self._handler = None
@@ -328,11 +371,8 @@ class OutputAnchor:
     def set_data(self, data):
         self._data = data
 
-    def set_col_names(self, col_names):
-        self._col_names = col_names
-
-    def set_col_types(self, col_types):
-        self._col_types = col_types
+    def set_col_metadata(self, metadata):
+        self._metadata = metadata
 
     def get_data(self):
         return self._data
@@ -344,13 +384,27 @@ class OutputAnchor:
             return [self._data]
         return self._data
 
-    def get_col_names(self):
-        if interface_utils.is_dataframe(self._data):
-            return list(self._data)
-        return self._col_names
+    def get_col_metadata(self):
+        # This just makes sure they are all the same size
+        num_of_columns = len(self._metadata['name'])
+        for attribute in self._metadata:
+            if len(self._metadata[attribute]) < num_of_columns:
+                self._metadata[attribute].extend(None for _ in range(
+                    num_of_columns - len(self._metadata[attribute])))
+        return self._metadata
 
-    def get_col_types(self):
-        return self._col_types
+    def push_metadata(self: object, plugin: object) -> None:
+        out_col_metadata = self.get_col_metadata()
+
+        if self._record_info_out is None:
+
+            self._record_info_out = plugin.create_record_info()
+
+            interface_utils.build_ayx_record_info(
+                out_col_metadata, self._record_info_out
+            )
+
+            self._handler.init(self._record_info_out)
 
     def push_records(self: object, plugin: object) -> None:
         """
@@ -369,30 +423,19 @@ class OutputAnchor:
         None
         """
         out_values_list = self.get_data_list()
-        out_col_names_list = self.get_col_names()
-        out_col_types_list = self.get_col_types()
+        out_col_metadata = self.get_col_metadata()
 
         # If there are no output records, just return
         if out_values_list is None:
             return
 
         if not self._record_info_out:
-            # TODO repackage all of this into a util function.
-            # use out_col_names_list and out_col_types_list to
-            # create new record info out
-            self._record_info_out = plugin.create_record_info()
-
-            interface_utils.build_ayx_record_info(
-                out_col_names_list, out_col_types_list, self._record_info_out
-            )
-
-            self._handler.init(self._record_info_out)
+            self.push_metadata(plugin)
 
         for value in out_values_list:
             out_record, self._record_creator = interface_utils.build_ayx_record_from_list(
                 value,
-                out_col_names_list,
-                out_col_types_list,
+                out_col_metadata,
                 self._record_info_out,
                 self._record_creator,
             )

@@ -1,7 +1,9 @@
 # Built in Libraries
 import os
+from collections import namedtuple
 from typing import Union, Any, List, Optional, cast, Set, Dict, Tuple
 import pdb
+import logging
 
 # 3rd Party Libraries
 try:
@@ -12,10 +14,9 @@ except:
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
 
-# Custom libraries
-from . import plugin_utilities as plugin_utils
-
-# interface
+# Create a column named tuple for use in below functions
+Column = namedtuple(
+    "Column", ["name", "type", "size", "source", "description", "value"])
 
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
@@ -42,19 +43,29 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         dobule, bool, or string. The returned value represents the parsed/typed 
         value of the desired field from the input record
     """
-    fieldType = str(field.type)
-    if fieldType == "blob":
-        return field.get_as_blob(record)
-    elif any(fieldType in s for s in ["byte", "int16", "int32"]):
-        return field.get_as_int32(record)
-    elif fieldType == "int64":
-        return field.get_as_int64(record)
-    elif any(fieldType in s for s in ["float"]):
-        return field.get_as_double(record)
-    elif fieldType == "bool":
-        return field.get_as_bool(record)
-    else:
-        return field.get_as_string(record)
+    try:
+        return {
+            "blob": field.get_as_blob,
+            "byte": field.get_as_int32,
+            "int16": field.get_as_int32,
+            "int32": field.get_as_int32,
+            "int64": field.get_as_int64,
+            "float": field.get_as_double,
+            "date": field.get_as_string,
+            "time": field.get_as_string,
+            "datetime": field.get_as_string,
+            "bool": field.get_as_bool,
+            "string": field.get_as_string,
+            "v_string": field.get_as_string,
+            "v_wstring": field.get_as_string,
+            "wstring": field.get_as_string,
+        }[str(field.type)](record)
+    except KeyError:
+        # The type wasn't found, throw an error to let the use know
+        err_str = f'Failed to automatically convert field type "{str(field.type)}" due to unidentified type name.'
+        logger = logging.getLogger(__name__)
+        logger.error(err_str, stack_info=True)
+        raise TypeError(err_str)
 
 
 # interface
@@ -72,6 +83,29 @@ def get_column_names_list(record_info_in: object) -> List[str]:
         A list of the column names in string format
     """
     return [field.name for field in record_info_in]
+
+# interface
+
+
+def get_column_metadata(record_info_in: object) -> dict:
+    """
+    Collects the column names, types, sizes, sources, and descriptions from an Alteryx record info object.
+
+    Parameters
+    ----------
+    record_info_in : object
+        An Alteryx RecordInfo object
+
+    Returns
+    -------
+    List[dict]
+        A list of column metadata
+    """
+    return {"name": [field.name for field in record_info_in],
+            "type": [field.type for field in record_info_in],
+            "size": [field.size for field in record_info_in],
+            "source": [field.source for field in record_info_in],
+            "description": [field.description for field in record_info_in]}
 
 
 # interface
@@ -124,7 +158,9 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         This is a stateful function that produces side effects by modifying
         the record_creator object.  
     """
-    if field.type == sdk.FieldType.bool:
+    if value is None:
+        field.set_null(record_creator)
+    elif field.type == sdk.FieldType.bool:
         field.set_from_bool(record_creator, value)
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, value)
@@ -148,7 +184,7 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
 
 # interface
 def add_new_field_to_record_info(
-    record_info: object, field_name: str, field_type: object, field_size: int = None
+    record_info: object, field_name: str, field_type: object, field_size: int, field_source: str, field_desc: str
 ) -> None:
     """
     Attaches a field of specified name, type, and size to the specified Alteryx
@@ -187,7 +223,13 @@ def add_new_field_to_record_info(
     field_size : int 
         An integer specifying the size of the desired Alteryx Field. This
         option is ignored for primitive types, and is only used for string,
-        blob, and spatial types.   
+        blob, and spatial types.  
+
+    field_source : str
+        Where this field came from
+
+    field_desc
+        A short description of what this field is 
 
     Returns
     ---------
@@ -207,12 +249,13 @@ def add_new_field_to_record_info(
     elif field_size is None:
         field_size = 0
 
-    record_info.add_field(field_name, field_type, field_size)
+    record_info.add_field(field_name, field_type, size=field_size,
+                          source=field_source, description=field_desc)
 
 
 # interface
 def build_ayx_record_info(
-    names_list: List[str], types_list: List[object], record_info: object
+    metadata: dict, record_info: object
 ) -> None:
     """
     Populates a an Alteryx RecordInfo object with field objects based on the 
@@ -221,14 +264,11 @@ def build_ayx_record_info(
 
     Parameters
     ---------- 
-    names_list : List[str] 
-        A list of the names for each respective column.  These are used to generate
-        the Alteryx RecordInfo object (if it doesn't already exist) for the names
-        of each respective Field object. 
-
-    types_list : List[object] 
-        A list of the respective Alteryx FieldType objects for each column in the 
-        values_list.  
+    metadata : dict
+        A dict containing all of the names, types, sizes, sources,
+        and descriptions of each field. These are used to generate 
+        the Alteryx RecordInfo object (if it doesn't already exist)
+        for the names of each respective Field object.
 
     record_info : object
         An Alteryx RecordInfo object.
@@ -241,8 +281,18 @@ def build_ayx_record_info(
     None
         This is a stateful function that produces side effects by modifying
         the record_info object. 
+
     """
-    output_columns = zip(names_list, types_list)
+    output_columns = [
+        Column(
+            metadata['name'][i],
+            metadata['type'][i],
+            metadata['size'][i],
+            metadata['source'][i],
+            metadata['description'][i],
+            None)
+        for i in range(len(metadata['name']))
+    ]
 
     for output_column in output_columns:
         add_output_column_to_record_info(output_column, record_info)
@@ -251,8 +301,7 @@ def build_ayx_record_info(
 # interface
 def build_ayx_record_from_list(
     values_list: List[Any],
-    names_list: List[str],
-    types_list: List[object],
+    metadata_list: List[dict],
     record_info: object,
     record_creator: Optional[object] = None,
 ) -> Tuple[object, object]:
@@ -271,14 +320,12 @@ def build_ayx_record_from_list(
         data.  The 0th index of the list represents data in the first column
         of the record, and so on.    
 
-    names_list : List[str] 
-        A list of the names for each respective column.  These are used to generate
+    metadata_list : List[dict]
+        (This might not be a list)
+        A list of the names, types, sizes, sources, and descriptions
+        for each respective column. These are used to generate
         the Alteryx RecordInfo object (if it doesn't already exist) for the names
         of each respective Field object. 
-
-    types_list : List[object] 
-        A list of the respective Alteryx FieldType objects for each column in the 
-        values_list.  
 
     record_info : object
         An Alteryx RecordInfo object.
@@ -309,10 +356,16 @@ def build_ayx_record_from_list(
             If one is not passed in, it creates a new one from the RecordInfo param, uses it to
             create a record, and returns it.  
     """
-    get_col_name = lambda x: x[0]
-    get_col_type = lambda x: x[1]
-    get_col_val = lambda x: x[2]
-    columns = zip(names_list, types_list, values_list)
+    columns = [
+        Column(
+            metadata_list['name'][i],
+            metadata_list['type'][i],
+            metadata_list['size'][i],
+            metadata_list['source'][i],
+            metadata_list['description'][i],
+            values_list[i])
+        for i in range(len(metadata_list['name']))
+    ]
 
     if record_info.num_fields == 0:
         for column in columns:
@@ -323,8 +376,8 @@ def build_ayx_record_from_list(
         record_creator = record_info.construct_record_creator()
 
     for column in columns:
-        field = record_info.get_field_by_name(get_col_name(column))
-        set_field_value(field, get_col_val(column), record_creator)
+        field = record_info.get_field_by_name(column.name)
+        set_field_value(field, column.value, record_creator)
 
     ayx_record = record_creator.finalize_record()
 
@@ -350,10 +403,13 @@ def add_output_column_to_record_info(
     ---------
     None
     """
-    get_col_name = lambda x: x[0]
-    get_col_type = lambda x: x[1]
     add_new_field_to_record_info(
-        record_info_out, get_col_name(output_column), get_col_type(output_column)
+        record_info_out,
+        output_column.name,
+        output_column.type,
+        output_column.size,
+        output_column.source,
+        output_column.description
     )
 
 
@@ -361,27 +417,23 @@ def add_output_column_to_record_info(
 def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
     batch_records = {}
     for input_name, input_interface in plugin.state_vars.input_anchors.items():
-        col_types = input_interface.interface_record_vars.column_types
         if plugin.process_data_input_type == "list":
             input_data = input_interface.interface_record_vars.record_list_in
-            col_names = input_interface.interface_record_vars.column_names
         else:
             if pd is None:
-                plugin_utils.log_and_raise_error(
-                    plugin.logging,
-                    ImportError,
-                    "The Pandas library must be installed to use the dataframe type.",
-                )
+                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
 
             input_data = pd.DataFrame(
                 input_interface.interface_record_vars.record_list_in,
-                columns=input_interface.interface_record_vars.column_names,
+                columns=input_interface.interface_record_vars.column_metadata['name'],
             )
-            col_names = None
 
         batch_records[input_name] = {
             "data": input_data,
-            "metadata": {"col_names": col_names, "col_types": col_types},
+            "metadata": input_interface.interface_record_vars.column_metadata,
         }
 
     return batch_records
@@ -425,4 +477,3 @@ def dataframe_to_list(df: object) -> List[List[Any]]:
         A list of lists of the pandas dataframe data
     """
     return df.values.tolist()
-

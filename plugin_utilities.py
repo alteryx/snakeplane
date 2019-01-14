@@ -12,26 +12,9 @@ except:
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
 
-# Custom libraries
-import snakeplane.interface_utilities as int_utils
 
-# plugin
-def noop(*args, **kwargs) -> None:
-    """
-    No operation. This is a function to be used when no additional
-    operation is required. This is handy in scenarios where a 
-    decorator must be called, but no additional functionality is
-    necessary. 
-
-    Parameters
-    ----------
-    Any, all params are ignored
-
-    Returns
-    ---------
-    None
-    """
-    pass
+def get_tools_location():
+    return f"{os.environ['APPDATA']}\\Alteryx\\Tools"
 
 
 # plugin
@@ -50,7 +33,7 @@ def get_tool_path(tool_name: str) -> str:
     str
         Absolute file path to the tool specified
     """
-    return f"{os.environ['APPDATA']}\\Alteryx\\Tools\\{tool_name}"
+    return f"{get_tools_location()}\\{tool_name}"
 
 
 # plugin
@@ -116,6 +99,9 @@ def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any
         List where each entry corresponds to an output anchor. Each entry
         is an ordered dictionary with anchor metadata.
     """
+    if "OutputConnections" not in get_xml_config_gui_settings(xml_dict):
+        return []
+
     connections = get_xml_config_gui_settings(xml_dict)["OutputConnections"][
         "Connection"
     ]
@@ -144,12 +130,3 @@ def get_class_attributes(cls: object) -> List[str]:
     return [
         a for a in dir(cls) if not a.startswith("__") and not callable(getattr(cls, a))
     ]
-
-
-# plugin
-def log_and_raise_error(logger, error, error_str):
-    """
-    Logs an error to the Alteryx canvas and raises the error
-    """
-    logger.display_error_msg(error_str)
-    raise error(error_str)
