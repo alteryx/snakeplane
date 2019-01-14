@@ -15,7 +15,8 @@ except:
 import AlteryxPythonSDK as sdk
 
 # Create a column named tuple for use in below functions
-Column = namedtuple("Column", ["name", "type", "size", "source", "description", "value"])
+Column = namedtuple(
+    "Column", ["name", "type", "size", "source", "description", "value"])
 
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
@@ -248,7 +249,8 @@ def add_new_field_to_record_info(
     elif field_size is None:
         field_size = 0
 
-    record_info.add_field(field_name, field_type, size=field_size, source=field_source, description=field_desc)
+    record_info.add_field(field_name, field_type, size=field_size,
+                          source=field_source, description=field_desc)
 
 
 # interface
@@ -282,7 +284,14 @@ def build_ayx_record_info(
 
     """
     output_columns = [
-        Column(metadata['name'][i], metadata['type'][i], metadata['size'][i], metadata['source'][i], metadata['description'][i], None) for i in range(len(metadata['name']))
+        Column(
+            metadata['name'][i],
+            metadata['type'][i],
+            metadata['size'][i],
+            metadata['source'][i],
+            metadata['description'][i],
+            None)
+        for i in range(len(metadata['name']))
     ]
 
     for output_column in output_columns:
@@ -348,7 +357,13 @@ def build_ayx_record_from_list(
             create a record, and returns it.  
     """
     columns = [
-        Column(metadata_list['name'][i], metadata_list['type'][i], metadata_list['size'][i], metadata_list['source'][i], metadata_list['description'][i], values_list[i])
+        Column(
+            metadata_list['name'][i],
+            metadata_list['type'][i],
+            metadata_list['size'][i],
+            metadata_list['source'][i],
+            metadata_list['description'][i],
+            values_list[i])
         for i in range(len(metadata_list['name']))
     ]
 
@@ -389,7 +404,12 @@ def add_output_column_to_record_info(
     None
     """
     add_new_field_to_record_info(
-        record_info_out, output_column.name, output_column.type, output_column.size, output_column.source, output_column.description
+        record_info_out,
+        output_column.name,
+        output_column.type,
+        output_column.size,
+        output_column.source,
+        output_column.description
     )
 
 
@@ -397,10 +417,8 @@ def add_output_column_to_record_info(
 def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
     batch_records = {}
     for input_name, input_interface in plugin.state_vars.input_anchors.items():
-        col_types = input_interface.interface_record_vars.column_types
         if plugin.process_data_input_type == "list":
             input_data = input_interface.interface_record_vars.record_list_in
-            col_names = input_interface.interface_record_vars.column_names
         else:
             if pd is None:
                 err_str = "The Pandas library must be installed to allow dataframe as input_type."
@@ -410,13 +428,12 @@ def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
 
             input_data = pd.DataFrame(
                 input_interface.interface_record_vars.record_list_in,
-                columns=input_interface.interface_record_vars.column_names,
+                columns=input_interface.interface_record_vars.column_metadata['name'],
             )
-            col_names = None
 
         batch_records[input_name] = {
             "data": input_data,
-            "metadata": {"col_names": col_names, "col_types": col_types},
+            "metadata": input_interface.interface_record_vars.column_metadata,
         }
 
     return batch_records
@@ -460,4 +477,3 @@ def dataframe_to_list(df: object) -> List[List[Any]]:
         A list of lists of the pandas dataframe data
     """
     return df.values.tolist()
-
