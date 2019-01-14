@@ -92,6 +92,7 @@ class PluginFactory:
         self.build_ii_push_record(lambda *args, **kwargs: True),
         self.build_ii_update_progress(noop),
         self.build_ii_close(noop)
+        self.build_metadata(noop)
 
     def build_pi_init(self, func: object):
         """
