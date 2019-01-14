@@ -359,7 +359,13 @@ class OutputManager:
 class OutputAnchor:
     def __init__(self):
         self._data = None
-        self._metadata = None
+        self._metadata = {
+            "name": [],
+            "type": [],
+            "size": [],
+            "source": [],
+            "description": []
+        }
         self._record_info_out = None
         self._record_creator = None
         self._handler = None
