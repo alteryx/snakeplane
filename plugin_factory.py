@@ -115,6 +115,9 @@ class PluginFactory:
         def wrap_pi_init(current_plugin, config_xml):
             current_plugin.save_output_anchor_refs()
 
+            if current_plugin.is_update_only_mode():
+                return
+
             # Parse XML and save
             current_plugin.workflow_config = xmltodict.parse(config_xml)[
                 "Configuration"
@@ -124,7 +127,7 @@ class PluginFactory:
             val = func(current_plugin)
 
             # Boilerplate Side Effects
-            current_plugin.set_initialization_state(True)
+            current_plugin.set_initialization_state(val)
 
             return val
 
@@ -263,14 +266,9 @@ class PluginFactory:
             # The commented out error below is causing failures because the pi_close method
             # isn't called when we think it should be...
 
-            # if not current_plugin.all_inputs_completed():
-            #     current_plugin.logging.display_error_msg(
-            #         "Missing Incoming Connection(s)"
-            #     )
-            # else:
-            func(current_plugin)
-
-            current_plugin.close_all_outputs()
+            if current_plugin.all_inputs_completed():
+                func(current_plugin)
+                current_plugin.close_all_outputs()
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
@@ -612,6 +610,9 @@ class PluginFactory:
                         anchor.push_metadata(plugin)
 
             # TODO: Move to helper?
+            def batch_ii_close(plugin):
+                if not plugin.is_initialized():
+                    return
 
             def batch_ii_close(plugin):
                 if plugin.all_inputs_completed():
@@ -629,6 +630,9 @@ class PluginFactory:
 
             # TODO: Move to helper?
             def stream_ii_push_record(plugin, current_interface, in_record):
+                if not plugin.is_initialized():
+                    return
+
                 # Since we're streaming, we should clear any accumulated records
                 plugin.clear_accumulated_records()
 

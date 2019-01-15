@@ -51,6 +51,7 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
             "int32": field.get_as_int32,
             "int64": field.get_as_int64,
             "float": field.get_as_double,
+            "double": field.get_as_double,
             "date": field.get_as_string,
             "time": field.get_as_string,
             "datetime": field.get_as_string,
@@ -411,32 +412,6 @@ def add_output_column_to_record_info(
         output_column.source,
         output_column.description
     )
-
-
-# interface
-def get_all_interfaces_batch_records(plugin: object) -> Dict[str, Any]:
-    batch_records = {}
-    for input_name, input_interface in plugin.state_vars.input_anchors.items():
-        if plugin.process_data_input_type == "list":
-            input_data = input_interface.interface_record_vars.record_list_in
-        else:
-            if pd is None:
-                err_str = "The Pandas library must be installed to allow dataframe as input_type."
-                logger = logging.getLogger(__name__)
-                logger.error(err_str)
-                raise ImportError(err_str)
-
-            input_data = pd.DataFrame(
-                input_interface.interface_record_vars.record_list_in,
-                columns=input_interface.interface_record_vars.column_metadata['name'],
-            )
-
-        batch_records[input_name] = {
-            "data": input_data,
-            "metadata": input_interface.interface_record_vars.column_metadata,
-        }
-
-    return batch_records
 
 
 # interface
