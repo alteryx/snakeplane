@@ -609,12 +609,10 @@ class PluginFactory:
                     for _, anchor in plugin._state_vars.output_anchors.items():
                         anchor.push_metadata(plugin)
 
-            # TODO: Move to helper?
             def batch_ii_close(plugin):
                 if not plugin.is_initialized():
                     return
 
-            def batch_ii_close(plugin):
                 if plugin.all_inputs_completed():
                     # Call user function to batch process data
                     func(
