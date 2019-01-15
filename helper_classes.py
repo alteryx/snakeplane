@@ -52,7 +52,7 @@ class AyxPlugin:
             if file.lower().endswith(".xml")
         ]
         with open(
-            f"{plugin_utils.get_tool_path(self.tool_name)}\\{xml_files[0]}"
+            os.path.join(plugin_utils.get_tool_path(self.tool_name), xml_files[0])
         ) as fd:
             self._state_vars.config_data = xmltodict.parse(fd.read())
 
