@@ -110,23 +110,3 @@ def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any
         connections = [connections]
 
     return connections
-
-
-# plugin
-def get_class_attributes(cls: object) -> List[str]:
-    """
-    Gets all of the attributes of a class
-
-    Parameters
-    ----------
-    cls: object
-        Any object
-
-    Returns
-    ---------
-    List[str]
-        List of attribute names
-    """
-    return [
-        a for a in dir(cls) if not a.startswith("__") and not callable(getattr(cls, a))
-    ]
