@@ -16,7 +16,8 @@ import AlteryxPythonSDK as sdk
 
 # Create a column named tuple for use in below functions
 Column = namedtuple(
-    "Column", ["name", "type", "size", "source", "description", "value"])
+    "Column", ["name", "type", "size", "source", "description", "value"]
+)
 
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
@@ -85,6 +86,7 @@ def get_column_names_list(record_info_in: object) -> List[str]:
     """
     return [field.name for field in record_info_in]
 
+
 # interface
 
 
@@ -102,11 +104,20 @@ def get_column_metadata(record_info_in: object) -> dict:
     List[dict]
         A list of column metadata
     """
-    return {"name": [field.name for field in record_info_in],
-            "type": [field.type for field in record_info_in],
-            "size": [field.size for field in record_info_in],
-            "source": [field.source for field in record_info_in],
-            "description": [field.description for field in record_info_in]}
+    from snakeplane.helper_classes import AnchorMetadata
+
+    metadata = AnchorMetadata()
+
+    for field in record_info_in:
+        metadata.add_column(
+            field.name,
+            field.type,
+            size=field.size,
+            source=field.source,
+            description=field.description,
+        )
+
+    return metadata
 
 
 # interface
@@ -185,7 +196,12 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
 
 # interface
 def add_new_field_to_record_info(
-    record_info: object, field_name: str, field_type: object, field_size: int, field_source: str, field_desc: str
+    record_info: object,
+    field_name: str,
+    field_type: object,
+    field_size: int,
+    field_source: str,
+    field_desc: str,
 ) -> None:
     """
     Attaches a field of specified name, type, and size to the specified Alteryx
@@ -250,14 +266,17 @@ def add_new_field_to_record_info(
     elif field_size is None:
         field_size = 0
 
-    record_info.add_field(field_name, field_type, size=field_size,
-                          source=field_source, description=field_desc)
+    record_info.add_field(
+        field_name,
+        field_type,
+        size=field_size,
+        source=field_source,
+        description=field_desc,
+    )
 
 
 # interface
-def build_ayx_record_info(
-    metadata: dict, record_info: object
-) -> None:
+def build_ayx_record_info(metadata: dict, record_info: object) -> None:
     """
     Populates a an Alteryx RecordInfo object with field objects based on the 
     contents of the names and types specified in names_list and types_list,
@@ -284,16 +303,7 @@ def build_ayx_record_info(
         the record_info object. 
 
     """
-    output_columns = [
-        Column(
-            metadata['name'][i],
-            metadata['type'][i],
-            metadata['size'][i],
-            metadata['source'][i],
-            metadata['description'][i],
-            None)
-        for i in range(len(metadata['name']))
-    ]
+    output_columns = metadata.get_columns()
 
     for output_column in output_columns:
         add_output_column_to_record_info(output_column, record_info)
@@ -359,13 +369,14 @@ def build_ayx_record_from_list(
     """
     columns = [
         Column(
-            metadata_list['name'][i],
-            metadata_list['type'][i],
-            metadata_list['size'][i],
-            metadata_list['source'][i],
-            metadata_list['description'][i],
-            values_list[i])
-        for i in range(len(metadata_list['name']))
+            metadata_list[i].name,
+            metadata_list[i].type,
+            metadata_list[i].size,
+            metadata_list[i].source,
+            metadata_list[i].description,
+            values_list[i],
+        )
+        for i in range(len(metadata_list))
     ]
 
     if record_info.num_fields == 0:
@@ -410,7 +421,7 @@ def add_output_column_to_record_info(
         output_column.type,
         output_column.size,
         output_column.source,
-        output_column.description
+        output_column.description,
     )
 
 
