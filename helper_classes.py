@@ -5,6 +5,7 @@ import os
 import logging
 from functools import partial
 from types import SimpleNamespace
+from collections import namedtuple
 from typing import Callable, Iterable, Union, Optional, List, Tuple
 
 # 3rd Party Libraries
@@ -83,14 +84,12 @@ class AyxPlugin:
 
             # Track names of the inputs that are required for this tool to run
             if connection["@Optional"] == "False":
-                self._state_vars.required_input_names.append(
-                    connection["@Name"])
+                self._state_vars.required_input_names.append(connection["@Name"])
 
         for connection in plugin_utils.get_xml_config_output_connections(
             self._state_vars.config_data
         ):
-            self._state_vars.output_anchors[connection["@Name"]] = OutputAnchor(
-            )
+            self._state_vars.output_anchors[connection["@Name"]] = OutputAnchor()
 
         # Custom data
         self.user_data = SimpleNamespace()
@@ -198,8 +197,7 @@ class AyxPlugin:
 
         # Checks whether connections were properly closed.
         for anchor_name in self._state_vars.output_anchors:
-            self._state_vars.output_anchors[anchor_name]._handler.assert_close(
-            )
+            self._state_vars.output_anchors[anchor_name]._handler.assert_close()
 
     def is_initialized(self):
         return self._state_vars.is_initialized
@@ -254,7 +252,7 @@ class AyxPluginInterface:
         self.parent = parent
 
         self._interface_record_vars = SimpleNamespace(
-            record_info_in=None, record_list_in=[], column_metadata={}
+            record_info_in=None, record_list_in=[], column_metadata=None
         )
 
         self._interface_state = SimpleNamespace(
@@ -293,9 +291,7 @@ class AyxPluginInterface:
         return record, column_metadata
 
     def accumulate_record(self, record):
-        row, column_metadata = self.create_record_for_input_records_list(
-            record
-        )
+        row, column_metadata = self.create_record_for_input_records_list(record)
 
         # Attach local column info to interface object
         self.set_col_metadata(column_metadata)
@@ -333,7 +329,7 @@ class AyxPluginInterface:
 
             return pd.DataFrame(
                 self._interface_record_vars.record_list_in,
-                columns=self._interface_record_vars.column_metadata['name'],
+                columns=self._interface_record_vars.column_metadata.get_column_names(),
             )
 
 
@@ -359,13 +355,7 @@ class OutputManager:
 class OutputAnchor:
     def __init__(self):
         self._data = None
-        self._metadata = {
-            "name": [],
-            "type": [],
-            "size": [],
-            "source": [],
-            "description": []
-        }
+        self._metadata = None
         self._record_info_out = None
         self._record_creator = None
         self._handler = None
@@ -387,12 +377,6 @@ class OutputAnchor:
         return self._data
 
     def get_col_metadata(self):
-        # This just makes sure they are all the same size
-        num_of_columns = len(self._metadata['name'])
-        for attribute in self._metadata:
-            if len(self._metadata[attribute]) < num_of_columns:
-                self._metadata[attribute].extend(None for _ in range(
-                    num_of_columns - len(self._metadata[attribute])))
         return self._metadata
 
     def push_metadata(self: object, plugin: object) -> None:
@@ -436,13 +420,50 @@ class OutputAnchor:
 
         for value in out_values_list:
             out_record, self._record_creator = interface_utils.build_ayx_record_from_list(
-                value,
-                out_col_metadata,
-                self._record_info_out,
-                self._record_creator,
+                value, out_col_metadata, self._record_info_out, self._record_creator
             )
 
             self._handler.push_record(out_record, False)
 
         # Clear the data from the output_anchor
         self.set_data(None)
+
+
+Column_Metadata = namedtuple(
+    "Column_Metadata", ["name", "type", "size", "source", "description"]
+)
+
+
+class AnchorMetadata:
+    def __init__(self):
+        self.columns = []
+
+    def add_column(self, name, col_type, size=256, source="", description=""):
+        self.columns.append(Column_Metadata(name, col_type, size, source, description))
+
+    def index_of(self, name):
+        for index, column in enumerate(self.columns):
+            if column.name == name:
+                return index
+        return -1
+
+    def get_column_by_name(self, name):
+        index = self.index_of(name)
+        if index == -1:
+            return None
+        return self.columns[index]
+
+    def get_column_names(self):
+        out = []
+        for c in self.columns:
+            out.append(c.name)
+        return out
+
+    def get_columns(self):
+        return self.columns
+
+    def __getitem__(self, key):
+        return self.columns[key]
+
+    def __len__(self):
+        return len(self.columns)

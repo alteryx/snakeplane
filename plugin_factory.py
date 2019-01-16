@@ -13,7 +13,7 @@ import AlteryxPythonSDK as sdk
 
 # Custom libraries
 # import ml_shared.utilities as utils
-from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface, AnchorMetadata
 import snakeplane.interface_utilities as interface_utils
 
 # TODO: Finish docstrings
@@ -690,3 +690,6 @@ class PluginFactory:
 
         """
         return self._plugin
+
+def create_anchor_metadata():
+    return AnchorMetadata()
