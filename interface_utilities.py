@@ -20,6 +20,23 @@ Column = namedtuple(
 )
 
 
+def get_dataframe_from_records(record_info, record_list):
+    if pd is None:
+        err_str = f"Pandas must be installed."
+        logger = logging.getLogger(__name__)
+        logger.error(err_str, stack_info=True)
+        raise NotImplementedError(err_str)
+
+    col_names = get_column_names_list(record_info)
+
+    data = []
+    for record in record_list:
+        row = [get_dynamic_type_value(field, record) for field in record_info]
+        data.append(row)
+
+    return pd.DataFrame(data, columns=col_names)
+
+
 def get_dynamic_type_value(field: object, record: object) -> Any:
     """
     Takes an Alteryx Field object associated with record metadata (record_info_in) 

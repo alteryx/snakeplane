@@ -3,6 +3,7 @@ import pickle
 import pdb
 import os
 import logging
+import copy
 from functools import partial
 from types import SimpleNamespace
 from collections import namedtuple
@@ -53,7 +54,7 @@ class AyxPlugin:
             if file.lower().endswith(".xml")
         ]
         with open(
-            f"{plugin_utils.get_tool_path(self.tool_name)}\\{xml_files[0]}"
+            os.path.join(plugin_utils.get_tool_path(self.tool_name), xml_files[0])
         ) as fd:
             self._state_vars.config_data = xmltodict.parse(fd.read())
 
@@ -163,6 +164,14 @@ class AyxPlugin:
             # Inform the downstream tool of this tool's progress.
             anchor._handler.update_progress(d_percentage)
 
+    def all_required_inputs_initialized(self) -> bool:
+        for anchor_name in self._state_vars.required_input_names:
+            input = self._state_vars.input_anchors[anchor_name]
+            if not input or not all([connection.initialized for connection in input]):
+                return False
+
+        return True
+
     def all_inputs_completed(self: object) -> bool:
         """
         Checks that all inputs have successfully completed on all 
@@ -244,12 +253,14 @@ class AyxPlugin:
 
 
 class AyxPluginInterface:
-    def __init__(self, parent: object):
+    def __init__(self, parent: object, name: str):
         """
             Constructor for IncomingInterface.
             :param parent: AyxPlugin
             """
         self.parent = parent
+        self.name = name
+        self.initialized = False
 
         self._interface_record_vars = SimpleNamespace(
             record_info_in=None, record_list_in=[], column_metadata=None
@@ -307,7 +318,7 @@ class AyxPluginInterface:
         self._interface_state.input_complete = True
 
     def get_col_metadata(self):
-        return self._interface_record_vars.column_metadata
+        return copy.deepcopy(self._interface_record_vars.column_metadata)
 
     def set_col_metadata(self, val):
         self._interface_record_vars.column_metadata = val
@@ -339,6 +350,9 @@ class InputManager:
 
     def get_anchor(self, name):
         return self._plugin._state_vars.input_anchors.get(name)
+
+    def get_tool_id(self):
+        return self._plugin._engine_vars.n_tool_id
 
 
 class OutputManager:
@@ -377,7 +391,7 @@ class OutputAnchor:
         return self._data
 
     def get_col_metadata(self):
-        return self._metadata
+        return copy.deepcopy(self._metadata)
 
     def push_metadata(self: object, plugin: object) -> None:
         out_col_metadata = self.get_col_metadata()
@@ -430,7 +444,7 @@ class OutputAnchor:
 
 
 Column_Metadata = namedtuple(
-    "Column_Metadata", ["name", "type", "size", "source", "description"]
+    "Column_Metadata", ["name", "type", "size", "scale", "source", "description"]
 )
 
 
@@ -438,8 +452,8 @@ class AnchorMetadata:
     def __init__(self):
         self.columns = []
 
-    def add_column(self, name, col_type, size=256, source="", description=""):
-        self.columns.append(Column_Metadata(name, col_type, size, source, description))
+    def add_column(self, name, col_type, size=256, scale=0, source="", description=""):
+        self.columns.append(Column_Metadata(name, col_type, size, scale, source, description))
 
     def index_of(self, name):
         for index, column in enumerate(self.columns):

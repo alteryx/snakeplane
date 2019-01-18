@@ -14,7 +14,7 @@ import AlteryxPythonSDK as sdk
 
 
 def get_tools_location():
-    return f"{os.environ['APPDATA']}\\Alteryx\\Tools"
+    return os.path.join(os.environ["APPDATA"], "Alteryx", "Tools")
 
 
 # plugin
@@ -33,7 +33,7 @@ def get_tool_path(tool_name: str) -> str:
     str
         Absolute file path to the tool specified
     """
-    return f"{get_tools_location()}\\{tool_name}"
+    return os.path.join(get_tools_location(), tool_name)
 
 
 # plugin
