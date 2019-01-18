@@ -31,7 +31,7 @@ def get_dataframe_from_records(record_info, record_list):
 
     data = []
     for record in record_list:
-        row = [get_dynamic_type_value(field, record) for field in record_info_out]
+        row = [get_dynamic_type_value(field, record) for field in record_info]
         data.append(row)
 
     return pd.DataFrame(data, columns=col_names)

@@ -444,7 +444,7 @@ class OutputAnchor:
 
 
 Column_Metadata = namedtuple(
-    "Column_Metadata", ["name", "type", "size", "source", "description"]
+    "Column_Metadata", ["name", "type", "size", "scale", "source", "description"]
 )
 
 
@@ -452,8 +452,8 @@ class AnchorMetadata:
     def __init__(self):
         self.columns = []
 
-    def add_column(self, name, col_type, size=256, source="", description=""):
-        self.columns.append(Column_Metadata(name, col_type, size, source, description))
+    def add_column(self, name, col_type, size=256, scale=0, source="", description=""):
+        self.columns.append(Column_Metadata(name, col_type, size, scale, source, description))
 
     def index_of(self, name):
         for index, column in enumerate(self.columns):
