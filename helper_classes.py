@@ -3,6 +3,7 @@ import pickle
 import pdb
 import os
 import logging
+import copy
 from functools import partial
 from types import SimpleNamespace
 from collections import namedtuple
@@ -317,7 +318,7 @@ class AyxPluginInterface:
         self._interface_state.input_complete = True
 
     def get_col_metadata(self):
-        return self._interface_record_vars.column_metadata
+        return copy.deepcopy(self._interface_record_vars.column_metadata)
 
     def set_col_metadata(self, val):
         self._interface_record_vars.column_metadata = val
@@ -390,7 +391,7 @@ class OutputAnchor:
         return self._data
 
     def get_col_metadata(self):
-        return self._metadata
+        return copy.deepcopy(self._metadata)
 
     def push_metadata(self: object, plugin: object) -> None:
         out_col_metadata = self.get_col_metadata()
