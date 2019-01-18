@@ -350,6 +350,9 @@ class InputManager:
     def get_anchor(self, name):
         return self._plugin._state_vars.input_anchors.get(name)
 
+    def get_tool_id(self):
+        return self._plugin._engine_vars.n_tool_id
+
 
 class OutputManager:
     def __init__(self, plugin):
