@@ -115,9 +115,6 @@ class PluginFactory:
         def wrap_pi_init(current_plugin, config_xml):
             current_plugin.save_output_anchor_refs()
 
-            if current_plugin.is_update_only_mode():
-                return
-
             # Parse XML and save
             current_plugin.workflow_config = xmltodict.parse(config_xml)[
                 "Configuration"
@@ -159,7 +156,7 @@ class PluginFactory:
             func(current_plugin, str_type, str_name)
 
             # Generate the interface
-            interface = current_plugin.plugin_interface(current_plugin)
+            interface = current_plugin.plugin_interface(current_plugin, str_type)
 
             # Save it to the plugin
             current_plugin.save_interface(str_type, interface)
@@ -193,6 +190,9 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
+            if current_plugin.is_update_only_mode():
+                return True
+
             if len(current_plugin._state_vars.required_input_names) == 0:
                 # Only call the users defined function when there are no required inputs, since this is the
                 # only scenario where something interesting happens in this function
@@ -225,8 +225,8 @@ class PluginFactory:
         """
 
         @wraps(func)
-        def wrap_pi_add_outgoing_connection(*original_args, **original_kwargs):
-            return func(*original_args, **original_kwargs)
+        def wrap_pi_add_outgoing_connection(current_plugin, str_name):
+            return func(current_plugin, str_name)
 
         setattr(
             self._plugin, "pi_add_outgoing_connection", wrap_pi_add_outgoing_connection
@@ -251,17 +251,6 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
-            if current_plugin.is_update_only_mode():
-                self._build_metadata(
-                    current_plugin.input_manager,
-                    current_plugin.output_manager,
-                    current_plugin.user_data,
-                    current_plugin.logging,
-                )
-                for _, anchor in current_plugin._state_vars.output_anchors.items():
-                    anchor.push_metadata(current_plugin)
-                return
-
             # TODO: Figure out why pi_close isn't called after all ii_close's
             # The commented out error below is causing failures because the pi_close method
             # isn't called when we think it should be...
@@ -293,8 +282,8 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
-
             current_interface.set_record_info_in(record_info_in)
+            current_interface.initialized = True
 
             metadata = interface_utils.get_column_metadata(record_info_in)
 
@@ -304,8 +293,21 @@ class PluginFactory:
 
             if not init_success:
                 current_plugin.set_initialization_state(False)
+                current_interface.initialized = False
+                return False
 
-            return init_success
+            if current_plugin.is_update_only_mode():
+                if current_plugin.all_required_inputs_initialized():
+                    self._build_metadata(
+                        current_plugin.input_manager,
+                        current_plugin.output_manager,
+                        current_plugin.user_data,
+                        current_plugin.logging,
+                    )
+                    for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        anchor.push_metadata(current_plugin)
+
+            return True
 
         setattr(self._plugin.plugin_interface, "ii_init", wrap_ii_init)
 
@@ -333,6 +335,7 @@ class PluginFactory:
             :param in_record: The data for the incoming record.
             """
             current_plugin = current_interface.parent
+
             if (
                 not current_plugin.is_initialized()
                 or current_plugin.is_update_only_mode()
@@ -349,8 +352,7 @@ class PluginFactory:
             func(current_plugin, current_interface, in_record)
             return True
 
-        setattr(self._plugin.plugin_interface,
-                "ii_push_record", wrap_ii_push_record)
+        setattr(self._plugin.plugin_interface, "ii_push_record", wrap_ii_push_record)
 
     def build_ii_update_progress(self, func: object):
         """
@@ -402,6 +404,7 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_close(current_interface):
             current_plugin = current_interface.parent
+
             if current_plugin.is_update_only_mode():
                 return
 
@@ -596,7 +599,6 @@ class PluginFactory:
         setattr(self._plugin, "process_data_mode", mode)
 
         def decorator_process_data(func):
-
             def build_metadata(plugin):
 
                 if not plugin.is_update_only_mode():
@@ -690,6 +692,7 @@ class PluginFactory:
 
         """
         return self._plugin
+
 
 def create_anchor_metadata():
     return AnchorMetadata()

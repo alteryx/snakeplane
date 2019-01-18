@@ -163,6 +163,14 @@ class AyxPlugin:
             # Inform the downstream tool of this tool's progress.
             anchor._handler.update_progress(d_percentage)
 
+    def all_required_inputs_initialized(self) -> bool:
+        for anchor_name in self._state_vars.required_input_names:
+            input = self._state_vars.input_anchors[anchor_name]
+            if not input or not all([connection.initialized for connection in input]):
+                return False
+
+        return True
+
     def all_inputs_completed(self: object) -> bool:
         """
         Checks that all inputs have successfully completed on all 
@@ -244,12 +252,14 @@ class AyxPlugin:
 
 
 class AyxPluginInterface:
-    def __init__(self, parent: object):
+    def __init__(self, parent: object, name: str):
         """
             Constructor for IncomingInterface.
             :param parent: AyxPlugin
             """
         self.parent = parent
+        self.name = name
+        self.initialized = False
 
         self._interface_record_vars = SimpleNamespace(
             record_info_in=None, record_list_in=[], column_metadata=None
