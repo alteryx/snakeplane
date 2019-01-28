@@ -68,11 +68,12 @@ def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any,
         List where each entry corresponds to an input anchor. Each entry
         is an ordered dictionary with anchor metadata.
     """
-    connections = get_xml_config_gui_settings(xml_dict)["InputConnections"][
-        "Connection"
-    ]
+    connections = []
+    inputs = get_xml_config_gui_settings(xml_dict).get("InputConnections")
+    if inputs:
+        connections = inputs.get("Connection")
 
-    if type(connections) is not list:
+    if connections and not isinstance(connections, List):
         connections = [connections]
 
     return connections

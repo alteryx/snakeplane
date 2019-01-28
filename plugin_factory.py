@@ -638,6 +638,18 @@ class PluginFactory:
                 build_metadata(plugin)
                 plugin.push_all_output_records()
 
+            def source_pi_push_all_records(plugin, n_record_limit):
+                func(
+                    plugin.input_manager,
+                    plugin.output_manager,
+                    plugin.user_data,
+                    plugin.logging,
+                )
+
+                # Flush all output records set by user
+                build_metadata(plugin)
+                plugin.push_all_output_records()
+
             if mode.lower() == "batch":
                 self.build_ii_push_record(
                     lambda plugin, interface, in_record: interface.accumulate_record(
@@ -647,12 +659,11 @@ class PluginFactory:
                 self.build_ii_close(batch_ii_close)
             elif mode.lower() == "stream":
                 self.build_ii_push_record(stream_ii_push_record)
-            elif mode.lower() == "generate":
-                # TODO: Add generation options
-                raise NotImplementedError()
+            elif mode.lower() == "source":
+                self.build_pi_push_all_records(source_pi_push_all_records)
             else:
                 raise ValueError(
-                    "Mode parameter of process_data must be one of 'batch'|'stream'"
+                    "Mode parameter of process_data must be one of 'batch'|'stream'|'source'"
                 )
 
         return decorator_process_data
