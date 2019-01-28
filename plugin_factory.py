@@ -663,7 +663,8 @@ class PluginFactory:
                 self.build_pi_push_all_records(source_pi_push_all_records)
             else:
                 raise ValueError(
-                    "Mode parameter of process_data must be one of 'batch'|'stream'|'source'"
+                    """Mode parameter of process_data must be one of
+                    'batch'|'stream'|'source'"""
                 )
 
         return decorator_process_data
