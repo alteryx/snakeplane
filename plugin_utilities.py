@@ -1,16 +1,12 @@
 # Built in Libraries
 import os
-from typing import Union, Any, List, Optional, cast, Set, Dict, Tuple
-import pdb
+from typing import Any, Dict, List
 
 # 3rd Party Libraries
 try:
     import pandas as pd
-except:
+except ModuleNotFoundError:
     pd = None
-
-# Alteryx Libraries
-import AlteryxPythonSDK as sdk
 
 
 def get_tools_location():
@@ -58,7 +54,7 @@ def get_xml_config_gui_settings(xml_dict: Dict[Any, Any]) -> Dict[Any, Any]:
 # plugin
 def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any, Any]]:
     """
-    Gets the Tool XML Input connection configuration given 
+    Gets the Tool XML Input connection configuration given
     the dictionary generated from xmltodict and the tool Config.xml
 
     Parameters
@@ -72,11 +68,12 @@ def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any,
         List where each entry corresponds to an input anchor. Each entry
         is an ordered dictionary with anchor metadata.
     """
-    connections = get_xml_config_gui_settings(xml_dict)["InputConnections"][
-        "Connection"
-    ]
+    connections = []
+    inputs = get_xml_config_gui_settings(xml_dict).get("InputConnections")
+    if inputs:
+        connections = inputs.get("Connection")
 
-    if type(connections) is not list:
+    if connections and not isinstance(connections, List):
         connections = [connections]
 
     return connections
@@ -85,7 +82,7 @@ def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any,
 # plugin
 def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any, Any]]:
     """
-    Gets the Tool XML Output connection configuration given 
+    Gets the Tool XML Output connection configuration given
     the dictionary generated from xmltodict and the tool Config.xml
 
     Parameters

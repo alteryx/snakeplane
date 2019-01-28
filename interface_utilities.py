@@ -1,14 +1,12 @@
-# Built in Libraries
-import os
-from collections import namedtuple
-from typing import Union, Any, List, Optional, cast, Set, Dict, Tuple
-import pdb
+# Standard Library
 import logging
+from collections import namedtuple
+from typing import Any, List, Optional, Tuple
 
 # 3rd Party Libraries
 try:
     import pandas as pd
-except:
+except ModuleNotFoundError:
     pd = None
 
 # Alteryx Libraries
@@ -39,8 +37,8 @@ def get_dataframe_from_records(record_info, record_list):
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
     """
-    Takes an Alteryx Field object associated with record metadata (record_info_in) 
-    and a single record and extracts the data from the record using the getter 
+    Takes an Alteryx Field object associated with record metadata (record_info_in)
+    and a single record and extracts the data from the record using the getter
     function assoicated with the type of that field (e.g. get_as_int32, etc.)
 
     Parameters
@@ -48,17 +46,17 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
     field : object
         An Alteryx Field object that is present in an Alteryx RecordInfo object.
         Alteryx Field objects contain various attributes, including type, as well
-        as the actual methods that allow for getting/setting values in the 
-        RecordRef passed in via C++ engine.  
+        as the actual methods that allow for getting/setting values in the
+        RecordRef passed in via C++ engine.
 
-    record : object 
+    record : object
         A single record object from Alteryx that contains a row of data.
 
     Returns
     ---------
     Any
         The return value of this function can be any of types blob, int32, int64,
-        dobule, bool, or string. The returned value represents the parsed/typed 
+        dobule, bool, or string. The returned value represents the parsed/typed
         value of the desired field from the input record
     """
     try:
@@ -81,7 +79,8 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         }[str(field.type)](record)
     except KeyError:
         # The type wasn't found, throw an error to let the use know
-        err_str = f'Failed to automatically convert field type "{str(field.type)}" due to unidentified type name.'
+        err_str = f"""Failed to automatically convert field type "{str(field.type)}"
+                    due to unidentified type name."""
         logger = logging.getLogger(__name__)
         logger.error(err_str, stack_info=True)
         raise TypeError(err_str)
@@ -109,7 +108,8 @@ def get_column_names_list(record_info_in: object) -> List[str]:
 
 def get_column_metadata(record_info_in: object) -> dict:
     """
-    Collects the column names, types, sizes, sources, and descriptions from an Alteryx record info object.
+    Collects the column names, types, sizes, sources, and descriptions from an Alteryx
+    record info object.
 
     Parameters
     ----------
@@ -157,7 +157,7 @@ def get_column_types_list(record_info_in: object) -> List[object]:
 # interface
 def set_field_value(field: object, value: Any, record_creator: object) -> None:
     """
-    Takes a python value and writes it to its respective field in a given 
+    Takes a python value and writes it to its respective field in a given
     record_creator object.
 
     Parameters
@@ -165,10 +165,10 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
     field : object
         An Alteryx Field object that is present in an Alteryx RecordInfo object.
         Alteryx Field objects contain various attributes, including type, as well
-        as the actual methods that allow for getting/setting values in the 
-        RecordRef passed in via C++ engine.  
+        as the actual methods that allow for getting/setting values in the
+        RecordRef passed in via C++ engine.
 
-    value : Any 
+    value : Any
         This is the actual Python object of any type to pass into the field.  It
         is the user's responsibility to know whether this Python object is
         compatible with the destination Field's type.
@@ -176,16 +176,16 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
     record_creator : object
         An Alteryx RecordCreator object.  The RecordCreator object is created by
         calling the construct_record_creator method on an Alteryx RecordInfo
-        object.  It is a stateful object which is populated with values as a 
-        side-effect of this function.  When its finalize method is called, it 
+        object.  It is a stateful object which is populated with values as a
+        side-effect of this function.  When its finalize method is called, it
         returns an actual reference to the record's data, in the form of an
-        Alteryx RecordRef object.  
+        Alteryx RecordRef object.
 
     Returns
     ---------
     None
         This is a stateful function that produces side effects by modifying
-        the record_creator object.  
+        the record_creator object.
     """
     if value is None:
         field.set_null(record_creator)
@@ -222,15 +222,15 @@ def add_new_field_to_record_info(
 ) -> None:
     """
     Attaches a field of specified name, type, and size to the specified Alteryx
-    RecordInfo object.   
+    RecordInfo object.
 
     Parameters
     ----------
     record_info : object
         An Alteryx RecordInfo object.
         Alteryx RecordInfo objects act as containers for the necessary metadata
-        needed by the Alteryx engine to generate, identify, and manipulate 
-        each record of data passing through the tool.  
+        needed by the Alteryx engine to generate, identify, and manipulate
+        each record of data passing through the tool.
 
     field_name : str
         A string representing the desired name of the field.
@@ -254,22 +254,22 @@ def add_new_field_to_record_info(
             sdk.FieldType.time,
             sdk.FieldType.spatial
 
-    field_size : int 
+    field_size : int
         An integer specifying the size of the desired Alteryx Field. This
         option is ignored for primitive types, and is only used for string,
-        blob, and spatial types.  
+        blob, and spatial types.
 
     field_source : str
         Where this field came from
 
     field_desc
-        A short description of what this field is 
+        A short description of what this field is
 
     Returns
     ---------
     None
         This is a stateful function that produces side effects by modifying
-        the record_info object.  
+        the record_info object.
     """
     string_field_set = {
         sdk.FieldType.string,
@@ -295,29 +295,29 @@ def add_new_field_to_record_info(
 # interface
 def build_ayx_record_info(metadata: dict, record_info: object) -> None:
     """
-    Populates a an Alteryx RecordInfo object with field objects based on the 
+    Populates a an Alteryx RecordInfo object with field objects based on the
     contents of the names and types specified in names_list and types_list,
-    respectively.   
+    respectively.
 
     Parameters
-    ---------- 
+    ----------
     metadata : dict
         A dict containing all of the names, types, sizes, sources,
-        and descriptions of each field. These are used to generate 
+        and descriptions of each field. These are used to generate
         the Alteryx RecordInfo object (if it doesn't already exist)
         for the names of each respective Field object.
 
     record_info : object
         An Alteryx RecordInfo object.
         Alteryx RecordInfo objects act as containers for the necessary metadata
-        needed by the Alteryx engine to generate, identify, and manipulate 
+        needed by the Alteryx engine to generate, identify, and manipulate
         each record of data passing through the tool.
 
     Returns
     ---------
     None
         This is a stateful function that produces side effects by modifying
-        the record_info object. 
+        the record_info object.
 
     """
     output_columns = metadata.get_columns()
@@ -337,52 +337,52 @@ def build_ayx_record_from_list(
     Takes a list of values that represents a single row of data, along with metadata
     and a blank or already populated Alteryx RecordInfo object, and returns a tuple
     containing a populated Alteryx RecordRef object and an already initialized
-    RecordCreator object.  
+    RecordCreator object.
     The returned RecordCreator object can optionally be passed back into the function,
     allowing for improved performance when looping through a list of new values.
 
     Parameters
     ----------
-    values_list : List[Any] 
+    values_list : List[Any]
         A list of Python objects of any type that represents a single record of
         data.  The 0th index of the list represents data in the first column
-        of the record, and so on.    
+        of the record, and so on.
 
     metadata_list : List[dict]
         (This might not be a list)
         A list of the names, types, sizes, sources, and descriptions
         for each respective column. These are used to generate
         the Alteryx RecordInfo object (if it doesn't already exist) for the names
-        of each respective Field object. 
+        of each respective Field object.
 
     record_info : object
         An Alteryx RecordInfo object.
         Alteryx RecordInfo objects act as containers for the necessary metadata
-        needed by the Alteryx engine to generate, identify, and manipulate 
+        needed by the Alteryx engine to generate, identify, and manipulate
         each record of data passing through the tool.
 
     record_creator : Optional[object]
-        An optional Alteryx RecordCreator object.  The RecordCreator object is created by
-        calling the construct_record_creator method on an Alteryx RecordInfo
-        object.  It is a stateful object which is populated with values as a 
-        side-effect of this function.  When its finalize method is called, it 
+        An optional Alteryx RecordCreator object. The RecordCreator object is created
+        by calling the construct_record_creator method on an Alteryx RecordInfo
+        object.  It is a stateful object which is populated with values as a
+        side-effect of this function.  When its finalize method is called, it
         returns an actual reference to the record's data, in the form of an
-        Alteryx RecordRef object.  
-        If no record_creator object is passed into the function, one will be created using
-        the record_info object.
-        The function will automatically reset the record_creator if one is passed in.  
+        Alteryx RecordRef object.
+        If no record_creator object is passed into the function, one will be created
+        using the record_info object.
+        The function will automatically reset the record_creator if one is passed in.
 
     Returns
     ---------
     Tuple(object, object)
         First value in tuple:
-            Alteryx RecordRef object, with each Field populated with the respective values
-            in the values_list parameter.
+            Alteryx RecordRef object, with each Field populated with the respective
+            values in the values_list parameter.
         Second value in tuple:
-            Alteryx RecordCreator object.  If one was passed in as a parameter, it returns it
-            after creating a record with it.  
-            If one is not passed in, it creates a new one from the RecordInfo param, uses it to
-            create a record, and returns it.  
+            Alteryx RecordCreator object.  If one was passed in as a parameter, it
+            returns it after creating a record with it.
+            If one is not passed in, it creates a new one from the RecordInfo param,
+            uses it to create a record, and returns it.
     """
     columns = [
         Column(

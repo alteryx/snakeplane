@@ -1,46 +1,35 @@
 # Built in Libraries
-import pdb
-import copy
 import logging
 from functools import wraps
-from typing import Callable, Iterable, Union, Optional, List
 
 # 3rd Party Libraries
-import xmltodict
-
-# Alteryx Libraries
-import AlteryxPythonSDK as sdk
-
-# Custom libraries
-# import ml_shared.utilities as utils
-from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface, AnchorMetadata
 import snakeplane.interface_utilities as interface_utils
+from snakeplane.helper_classes import AnchorMetadata, AyxPlugin, AyxPluginInterface
 
-# TODO: Finish docstrings
-# TODO: Add error handling/logging
+import xmltodict
 
 
 class PluginFactory:
     """
-    The PluginFactory follows a Flask-like paradigm of leveraging decorators to inject custom
-    user methods while abstracting the boilerplate operations for input and output with the
-    Alteryx Engine.
+    The PluginFactory follows a Flask-like paradigm of leveraging decorators to inject
+    custom user methods while abstracting the boilerplate operations for input and
+    output with the Alteryx Engine.
 
     Attributes
     ----------
     plugin : object
         The plugin property contains a reference to a dynamic class declaration for the
         AyxPlugin class required by the Alteryx Engine for a Python SDK Plugin tool.
-        The plugin object gets updated and further defined by the user as they call methods
-        on the PluginFactory instance (either directly or via decorators).
+        The plugin object gets updated and further defined by the user as they call
+        methods on the PluginFactory instance (either directly or via decorators).
 
     plugin.plugin_interface : object
-        Although not a direct attribute of the PluginFactory class, due to the metaprogramming
-        nature of the PluginFactory, the plugin_interface object is also a reference to
-        a dynamic class declaration for an Alteryx Plugin Interface that is used as a child
-        class instance by the plugin object.  The PluginFactory is also dynamically constructing
-        this class declaration based on the user's use of the PluginFactory's methods (either
-        directly or via decorators).
+        Although not a direct attribute of the PluginFactory class, due to the
+        metaprogramming nature of the PluginFactory, the plugin_interface object is
+        also a reference to a dynamic class declaration for an Alteryx Plugin Interface
+        that is used as a child class instance by the plugin object. The PluginFactory
+        is also dynamically constructing this class declaration based on the user's use
+        of the PluginFactory's methods (either directly or via decorators).
     """
 
     def __init__(self, tool_name: str):
@@ -64,9 +53,9 @@ class PluginFactory:
         """
 
         # Make local, per instance copies of the plugins so that multiple plugins
-        # can be generated with the same library. Since the plugin factory does metaprogramming,
-        # we can't modify the original definitions of AyxPlugin/AyxPluginInterface without
-        # contaminating the package
+        # can be generated with the same library. Since the plugin factory does
+        # metaprogramming, we can't modify the original definitions of
+        # AyxPlugin/AyxPluginInterface without contaminating the package
         class Plugin(AyxPlugin):
             pass
 
@@ -96,14 +85,14 @@ class PluginFactory:
 
     def build_pi_init(self, func: object):
         """
-        A decorator that is used to register a user defined pi_init (plugin initialize) function
-        to be injected into the generated AyxPlugin class.
+        A decorator that is used to register a user defined pi_init (plugin initialize)
+        function to be injected into the generated AyxPlugin class.
 
         Parameters
         ----------
         func: Callable[object, str]
-        The user-defined function that will be called by the Alteryx Engine to initialize
-        the plugin.
+        The user-defined function that will be called by the Alteryx Engine to
+        initialize the plugin.
 
         Returns
         --------
@@ -179,8 +168,8 @@ class PluginFactory:
         The user-defined function that will be called by the Alteryx Engine when
         no incoming interface exists.  Typically this is for generating records from
         sources outside of Alteryx, such as an API or database.
-        It is expected that this function returns a True if no errors are present, otherwise
-        False.
+        It is expected that this function returns a True if no errors are present,
+        otherwise False.
 
         Returns
         --------
@@ -194,8 +183,9 @@ class PluginFactory:
                 return True
 
             if len(current_plugin._state_vars.required_input_names) == 0:
-                # Only call the users defined function when there are no required inputs, since this is the
-                # only scenario where something interesting happens in this function
+                # Only call the users defined function when there are no required
+                # inputs, since this is the only scenario where something interesting
+                # happens in this function
                 func(current_plugin, n_record_limit)
                 return True
 
@@ -251,10 +241,6 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
-            # TODO: Figure out why pi_close isn't called after all ii_close's
-            # The commented out error below is causing failures because the pi_close method
-            # isn't called when we think it should be...
-
             if current_plugin.all_inputs_completed():
                 func(current_plugin)
                 current_plugin.close_all_outputs()
@@ -296,16 +282,18 @@ class PluginFactory:
                 current_interface.initialized = False
                 return False
 
-            if current_plugin.is_update_only_mode():
-                if current_plugin.all_required_inputs_initialized():
-                    self._build_metadata(
-                        current_plugin.input_manager,
-                        current_plugin.output_manager,
-                        current_plugin.user_data,
-                        current_plugin.logging,
-                    )
-                    for _, anchor in current_plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(current_plugin)
+            if (
+                current_plugin.is_update_only_mode()
+                and current_plugin.all_required_inputs_initialized()
+            ):
+                self._build_metadata(
+                    current_plugin.input_manager,
+                    current_plugin.output_manager,
+                    current_plugin.user_data,
+                    current_plugin.logging,
+                )
+                for _, anchor in current_plugin._state_vars.output_anchors.items():
+                    anchor.push_metadata(current_plugin)
 
             return True
 
@@ -650,6 +638,18 @@ class PluginFactory:
                 build_metadata(plugin)
                 plugin.push_all_output_records()
 
+            def source_pi_push_all_records(plugin, n_record_limit):
+                func(
+                    plugin.input_manager,
+                    plugin.output_manager,
+                    plugin.user_data,
+                    plugin.logging,
+                )
+
+                # Flush all output records set by user
+                build_metadata(plugin)
+                plugin.push_all_output_records()
+
             if mode.lower() == "batch":
                 self.build_ii_push_record(
                     lambda plugin, interface, in_record: interface.accumulate_record(
@@ -659,12 +659,12 @@ class PluginFactory:
                 self.build_ii_close(batch_ii_close)
             elif mode.lower() == "stream":
                 self.build_ii_push_record(stream_ii_push_record)
-            elif mode.lower() == "generate":
-                # TODO: Add generation options
-                raise NotImplementedError()
+            elif mode.lower() == "source":
+                self.build_pi_push_all_records(source_pi_push_all_records)
             else:
                 raise ValueError(
-                    "Mode parameter of process_data must be one of 'batch'|'stream'"
+                    """Mode parameter of process_data must be one of
+                    'batch'|'stream'|'source'"""
                 )
 
         return decorator_process_data
@@ -672,19 +672,19 @@ class PluginFactory:
     def generate_plugin(self):
         """
         This method returns the constructed class definition for an AyxPlugin object.
-        The AyxPlugin class definition is initialized by the Alteryx Engine via the 
-        Alteryx Python SDK.  
+        The AyxPlugin class definition is initialized by the Alteryx Engine via the
+        Alteryx Python SDK.
 
         Parameters
         ----------
-        None 
+        None
 
         Returns
         --------
-        object: AyxPlugin class definition 
-        The returned object is a modified AyxPlugin class definition, updated with 
+        object: AyxPlugin class definition
+        The returned object is a modified AyxPlugin class definition, updated with
         the user definied functions injected by use of the various decorators the user
-        has called.  
+        has called.
 
         Example
         -------

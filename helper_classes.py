@@ -1,21 +1,17 @@
 # Built in Libraries
-import pickle
-import pdb
-import os
-import logging
 import copy
+import logging
+import os
+from collections import namedtuple
 from functools import partial
 from types import SimpleNamespace
-from collections import namedtuple
-from typing import Callable, Iterable, Union, Optional, List, Tuple
+from typing import List, Tuple, Union
 
 # 3rd Party Libraries
 try:
     import pandas as pd
-except:
+except ModuleNotFoundError:
     pd = None
-
-import xmltodict
 
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
@@ -23,6 +19,8 @@ import AlteryxPythonSDK as sdk
 # Custom libraries
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
+
+import xmltodict
 
 
 class AyxPlugin:
@@ -174,8 +172,8 @@ class AyxPlugin:
 
     def all_inputs_completed(self: object) -> bool:
         """
-        Checks that all inputs have successfully completed on all 
-        required inputs. Optional inputs are not checked. 
+        Checks that all inputs have successfully completed on all
+        required inputs. Optional inputs are not checked.
 
         Parameters
         ----------
@@ -289,7 +287,7 @@ class AyxPluginInterface:
             The return takes the form (record, metadata)
             where:
                 record: A list of the parsed record values
-                metadata: a dict containing the names, types, sizes, 
+                metadata: a dict containing the names, types, sizes,
                 sources, and descriptions of each field
         """
         record_info = self._interface_record_vars.record_info_in
@@ -333,7 +331,8 @@ class AyxPluginInterface:
             return self._interface_record_vars.record_list_in
         else:
             if pd is None:
-                err_str = "The Pandas library must be installed to allow dataframe as input_type."
+                err_str = """The Pandas library must be installed to
+                            allow dataframe as input_type."""
                 logger = logging.getLogger(__name__)
                 logger.error(err_str)
                 raise ImportError(err_str)
@@ -433,9 +432,10 @@ class OutputAnchor:
             self.push_metadata(plugin)
 
         for value in out_values_list:
-            out_record, self._record_creator = interface_utils.build_ayx_record_from_list(
+            record_and_creator = interface_utils.build_ayx_record_from_list(
                 value, out_col_metadata, self._record_info_out, self._record_creator
             )
+            out_record, self._record_creator = record_and_creator
 
             self._handler.push_record(out_record, False)
 
@@ -453,7 +453,9 @@ class AnchorMetadata:
         self.columns = []
 
     def add_column(self, name, col_type, size=256, scale=0, source="", description=""):
-        self.columns.append(Column_Metadata(name, col_type, size, scale, source, description))
+        self.columns.append(
+            Column_Metadata(name, col_type, size, scale, source, description)
+        )
 
     def index_of(self, name):
         for index, column in enumerate(self.columns):
