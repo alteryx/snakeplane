@@ -654,18 +654,6 @@ class PluginFactory:
                 # Flush all output records set by user
                 plugin.push_all_output_records()
 
-            def source_pi_push_all_records(plugin, n_record_limit):
-                func(
-                    plugin.input_manager,
-                    plugin.output_manager,
-                    plugin.user_data,
-                    plugin.logging,
-                )
-
-                # Flush all output records set by user
-                build_metadata(plugin)
-                plugin.push_all_output_records()
-
             if mode.lower() == "batch":
                 self.build_ii_push_record(
                     lambda plugin, interface, in_record: interface.accumulate_record(
