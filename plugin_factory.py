@@ -604,6 +604,9 @@ class PluginFactory:
                     return
 
                 if plugin.all_inputs_completed():
+                    # Build metadata
+                    build_metadata(plugin)
+
                     # Call user function to batch process data
                     func(
                         plugin.input_manager,
@@ -613,7 +616,6 @@ class PluginFactory:
                     )
 
                     # Flush all output records set by user
-                    build_metadata(plugin)
                     plugin.push_all_output_records()
 
             # TODO: Move to helper?
@@ -627,6 +629,8 @@ class PluginFactory:
                 # Then we can accumulate, this guarantees only one interface at a time
                 # ever has a record
                 current_interface.accumulate_record(in_record)
+
+                build_metadata(plugin)
                 func(
                     plugin.input_manager,
                     plugin.output_manager,
@@ -635,7 +639,19 @@ class PluginFactory:
                 )
 
                 # Flush all output records set by user
+                plugin.push_all_output_records()
+
+            def source_pi_push_all_records(plugin, n_record_limit):
                 build_metadata(plugin)
+
+                func(
+                    plugin.input_manager,
+                    plugin.output_manager,
+                    plugin.user_data,
+                    plugin.logging,
+                )
+
+                # Flush all output records set by user
                 plugin.push_all_output_records()
 
             def source_pi_push_all_records(plugin, n_record_limit):
