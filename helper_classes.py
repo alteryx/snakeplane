@@ -38,7 +38,7 @@ class AyxPlugin:
 
         # Plugin State vars
         self._state_vars = SimpleNamespace(
-            is_initialized=False,
+            initialized=False,
             input_anchors={},
             output_anchors={},
             config_data=None,
@@ -96,6 +96,23 @@ class AyxPlugin:
         # Set up a custom logger so that errors, warnings and info are sent to designer
         self.set_logging()
 
+    @property
+    def initialized(self):
+        return self._state_vars.initialized
+
+    @initialized.setter
+    def initialized(self, value):
+        self._state_vars.initialized = bool(value)
+
+    @property
+    def update_only_mode(self):
+        return (
+            self._engine_vars.alteryx_engine.get_init_var(
+                self._engine_vars.n_tool_id, "UpdateOnly"
+            )
+            == "True"
+        )
+
     def set_logging(self):
         plugin = self
 
@@ -145,14 +162,6 @@ class AyxPlugin:
     def save_interface(self, name, interface):
         self._state_vars.input_anchors[name].append(interface)
 
-    def is_update_only_mode(self):
-        return (
-            self._engine_vars.alteryx_engine.get_init_var(
-                self._engine_vars.n_tool_id, "UpdateOnly"
-            )
-            == "True"
-        )
-
     def update_progress(self, d_percentage):
         self._engine_vars.alteryx_engine.output_tool_progress(
             self._engine_vars.n_tool_id, d_percentage
@@ -186,7 +195,7 @@ class AyxPlugin:
             Boolean indication of if all inputs have completed.
         """
         all_inputs_completed = True
-        if self.is_initialized():
+        if self.initialized:
             for name in self._state_vars.required_input_names:
                 connections = self._state_vars.input_anchors[name]
                 if len(connections) == 0 or not all(
@@ -205,12 +214,6 @@ class AyxPlugin:
         # Checks whether connections were properly closed.
         for anchor_name in self._state_vars.output_anchors:
             self._state_vars.output_anchors[anchor_name]._handler.assert_close()
-
-    def is_initialized(self):
-        return self._state_vars.is_initialized
-
-    def set_initialization_state(self, state):
-        self._state_vars.is_initialized = state
 
     def push_all_output_records(self: object) -> None:
         """
@@ -268,6 +271,32 @@ class AyxPluginInterface:
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
 
+    @property
+    def metadata(self):
+        return copy.deepcopy(self._interface_record_vars.column_metadata)
+
+    @property
+    def data(self):
+        if (
+            self.parent.process_data_mode == "stream"
+            and self.parent.process_data_input_type == "list"
+        ):
+            return self._interface_record_vars.record_list_in[0]
+        elif self.parent.process_data_input_type == "list":
+            return self._interface_record_vars.record_list_in
+        else:
+            if pd is None:
+                err_str = """The Pandas library must be installed to
+                            allow dataframe as input_type."""
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
+                raise ImportError(err_str)
+
+            return pd.DataFrame(
+                self._interface_record_vars.record_list_in,
+                columns=self._interface_record_vars.column_metadata.get_column_names(),
+            )
+
     def create_record_for_input_records_list(
         self: object, in_record: object
     ) -> Tuple[List[Union[int, float, bool, str, bytes]], dict]:
@@ -315,32 +344,8 @@ class AyxPluginInterface:
     def set_completed(self):
         self._interface_state.input_complete = True
 
-    def get_col_metadata(self):
-        return copy.deepcopy(self._interface_record_vars.column_metadata)
-
     def set_col_metadata(self, val):
         self._interface_record_vars.column_metadata = val
-
-    def get_data(self):
-        if (
-            self.parent.process_data_mode == "stream"
-            and self.parent.process_data_input_type == "list"
-        ):
-            return self._interface_record_vars.record_list_in[0]
-        elif self.parent.process_data_input_type == "list":
-            return self._interface_record_vars.record_list_in
-        else:
-            if pd is None:
-                err_str = """The Pandas library must be installed to
-                            allow dataframe as input_type."""
-                logger = logging.getLogger(__name__)
-                logger.error(err_str)
-                raise ImportError(err_str)
-
-            return pd.DataFrame(
-                self._interface_record_vars.record_list_in,
-                columns=self._interface_record_vars.column_metadata.get_column_names(),
-            )
 
 
 class InputManager:
@@ -350,8 +355,13 @@ class InputManager:
     def get_anchor(self, name):
         return self._plugin._state_vars.input_anchors.get(name)
 
-    def get_tool_id(self):
+    @property
+    def tool_id(self):
         return self._plugin._engine_vars.n_tool_id
+
+    @property
+    def workflow_config(self):
+        return self._plugin.workflow_config
 
 
 class OutputManager:
@@ -364,6 +374,10 @@ class OutputManager:
     def get_temp_file_path(self):
         return self._plugin._engine_vars.alteryx_engine.create_temp_file_name()
 
+    @staticmethod
+    def create_anchor_metadata():
+        return AnchorMetadata()
+
 
 class OutputAnchor:
     def __init__(self):
@@ -373,14 +387,21 @@ class OutputAnchor:
         self._record_creator = None
         self._handler = None
 
-    def set_data(self, data):
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
         self._data = data
 
-    def set_col_metadata(self, metadata):
-        self._metadata = metadata
+    @property
+    def metadata(self):
+        return copy.deepcopy(self._metadata)
 
-    def get_data(self):
-        return self._data
+    @metadata.setter
+    def metadata(self, metadata):
+        self._metadata = metadata
 
     def get_data_list(self):
         if interface_utils.is_dataframe(self._data):
@@ -389,11 +410,8 @@ class OutputAnchor:
             return [self._data]
         return self._data
 
-    def get_col_metadata(self):
-        return copy.deepcopy(self._metadata)
-
     def push_metadata(self: object, plugin: object) -> None:
-        out_col_metadata = self.get_col_metadata()
+        out_col_metadata = self.metadata
 
         if self._record_info_out is None:
 
@@ -422,7 +440,7 @@ class OutputAnchor:
         None
         """
         out_values_list = self.get_data_list()
-        out_col_metadata = self.get_col_metadata()
+        out_col_metadata = self.metadata
 
         # If there are no output records, just return
         if out_values_list is None:
@@ -440,7 +458,7 @@ class OutputAnchor:
             self._handler.push_record(out_record, False)
 
         # Clear the data from the output_anchor
-        self.set_data(None)
+        self.data = None
 
 
 Column_Metadata = namedtuple(
@@ -451,6 +469,14 @@ Column_Metadata = namedtuple(
 class AnchorMetadata:
     def __init__(self):
         self.columns = []
+
+    @property
+    def columns(self):
+        return self._columns
+
+    @columns.setter
+    def columns(self, value):
+        self._columns = value
 
     def add_column(self, name, col_type, size=256, scale=0, source="", description=""):
         self.columns.append(
@@ -474,9 +500,6 @@ class AnchorMetadata:
         for c in self.columns:
             out.append(c.name)
         return out
-
-    def get_columns(self):
-        return self.columns
 
     def __getitem__(self, key):
         return self.columns[key]

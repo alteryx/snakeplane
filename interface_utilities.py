@@ -320,7 +320,7 @@ def build_ayx_record_info(metadata: dict, record_info: object) -> None:
         the record_info object.
 
     """
-    output_columns = metadata.get_columns()
+    output_columns = metadata.columns
 
     for output_column in output_columns:
         add_output_column_to_record_info(output_column, record_info)

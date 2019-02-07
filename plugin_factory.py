@@ -113,7 +113,7 @@ class PluginFactory:
             val = func(current_plugin)
 
             # Boilerplate Side Effects
-            current_plugin.set_initialization_state(val)
+            current_plugin.initialized = val
 
             return val
 
@@ -179,7 +179,7 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
-            if current_plugin.is_update_only_mode():
+            if current_plugin.update_only_mode:
                 return True
 
             if len(current_plugin._state_vars.required_input_names) == 0:
@@ -278,12 +278,12 @@ class PluginFactory:
             init_success = func(current_interface, record_info_in)
 
             if not init_success:
-                current_plugin.set_initialization_state(False)
+                current_plugin.initialized = False
                 current_interface.initialized = False
                 return False
 
             if (
-                current_plugin.is_update_only_mode()
+                current_plugin.update_only_mode
                 and current_plugin.all_required_inputs_initialized()
             ):
                 self._build_metadata(
@@ -324,10 +324,7 @@ class PluginFactory:
             """
             current_plugin = current_interface.parent
 
-            if (
-                not current_plugin.is_initialized()
-                or current_plugin.is_update_only_mode()
-            ):
+            if not current_plugin.initialized or current_plugin.update_only_mode:
                 return False
 
             _, column_metadata = current_interface.create_record_for_input_records_list(
@@ -393,7 +390,7 @@ class PluginFactory:
         def wrap_ii_close(current_interface):
             current_plugin = current_interface.parent
 
-            if current_plugin.is_update_only_mode():
+            if current_plugin.update_only_mode:
                 return
 
             current_interface.set_completed()
@@ -589,7 +586,7 @@ class PluginFactory:
         def decorator_process_data(func):
             def build_metadata(plugin):
 
-                if not plugin.is_update_only_mode():
+                if not plugin.update_only_mode:
                     self._build_metadata(
                         plugin.input_manager,
                         plugin.output_manager,
@@ -600,7 +597,7 @@ class PluginFactory:
                         anchor.push_metadata(plugin)
 
             def batch_ii_close(plugin):
-                if not plugin.is_initialized():
+                if not plugin.initialized:
                     return
 
                 if plugin.all_inputs_completed():
@@ -620,7 +617,7 @@ class PluginFactory:
 
             # TODO: Move to helper?
             def stream_ii_push_record(plugin, current_interface, in_record):
-                if not plugin.is_initialized():
+                if not plugin.initialized:
                     return
 
                 # Since we're streaming, we should clear any accumulated records
@@ -696,7 +693,3 @@ class PluginFactory:
 
         """
         return self._plugin
-
-
-def create_anchor_metadata():
-    return AnchorMetadata()
