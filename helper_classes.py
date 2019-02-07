@@ -2,7 +2,7 @@
 import copy
 import logging
 import os
-from collections import namedtuple
+from collections import namedtuple, UserDict
 from functools import partial
 from types import SimpleNamespace
 from typing import List, Tuple, Union
@@ -27,9 +27,6 @@ class AyxPlugin:
     def __init__(
         self, n_tool_id: int, alteryx_engine: object, output_anchor_mgr: object
     ):
-        self.input_manager = InputManager(self)
-        self.output_manager = OutputManager(self)
-
         # Initialization data
         self._engine_vars = SimpleNamespace()
         self._engine_vars.n_tool_id = n_tool_id
@@ -95,6 +92,10 @@ class AyxPlugin:
 
         # Set up a custom logger so that errors, warnings and info are sent to designer
         self.set_logging()
+
+        # Configure managers, this must occur last so the instance is properly configured
+        self.input_manager = InputManager(self)
+        self.output_manager = OutputManager(self)
 
     @property
     def initialized(self):
@@ -348,12 +349,10 @@ class AyxPluginInterface:
         self._interface_record_vars.column_metadata = val
 
 
-class InputManager:
+class InputManager(UserDict):
     def __init__(self, plugin):
         self._plugin = plugin
-
-    def get_anchor(self, name):
-        return self._plugin._state_vars.input_anchors.get(name)
+        self.data = self._plugin._state_vars.input_anchors
 
     @property
     def tool_id(self):
@@ -364,12 +363,10 @@ class InputManager:
         return self._plugin.workflow_config
 
 
-class OutputManager:
+class OutputManager(UserDict):
     def __init__(self, plugin):
         self._plugin = plugin
-
-    def get_anchor(self, name):
-        return self._plugin._state_vars.output_anchors.get(name)
+        self.data = self._plugin._state_vars.output_anchors
 
     def get_temp_file_path(self):
         return self._plugin._engine_vars.alteryx_engine.create_temp_file_name()
