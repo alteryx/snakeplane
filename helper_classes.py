@@ -2,7 +2,7 @@
 import copy
 import logging
 import os
-from collections import namedtuple, UserDict
+from collections import UserDict, namedtuple
 from functools import partial
 from types import SimpleNamespace
 from typing import List, Tuple, Union
@@ -93,7 +93,8 @@ class AyxPlugin:
         # Set up a custom logger so that errors, warnings and info are sent to designer
         self.set_logging()
 
-        # Configure managers, this must occur last so the instance is properly configured
+        # Configure managers, this must occur last so the instance
+        # is properly configured
         self.input_manager = InputManager(self)
         self.output_manager = OutputManager(self)
 

@@ -4,7 +4,7 @@ from functools import wraps
 
 # 3rd Party Libraries
 import snakeplane.interface_utilities as interface_utils
-from snakeplane.helper_classes import AnchorMetadata, AyxPlugin, AyxPluginInterface
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
 import xmltodict
 
