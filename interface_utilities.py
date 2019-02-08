@@ -190,15 +190,15 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
     if value is None:
         field.set_null(record_creator)
     elif field.type == sdk.FieldType.bool:
-        field.set_from_bool(record_creator, value)
+        field.set_from_bool(record_creator, bool(value))
     elif field.type == sdk.FieldType.blob:
-        field.set_from_blob(record_creator, value)
+        field.set_from_blob(record_creator, bytes(value))
     elif field.type == sdk.FieldType.double:
-        field.set_from_double(record_creator, value)
+        field.set_from_double(record_creator, float(value))
     elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
-        field.set_from_int32(record_creator, value)
+        field.set_from_int32(record_creator, int(value))
     elif field.type == sdk.FieldType.int64:
-        field.set_from_int64(record_creator, value)
+        field.set_from_int64(record_creator, int(value))
     elif field.type in {
         sdk.FieldType.string,
         sdk.FieldType.v_string,
@@ -208,7 +208,7 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         sdk.FieldType.datetime,
         sdk.FieldType.time,
     }:
-        field.set_from_string(record_creator, value)
+        field.set_from_string(record_creator, str(value))
 
 
 # interface
