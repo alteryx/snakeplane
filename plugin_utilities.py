@@ -103,7 +103,7 @@ def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any
         "Connection"
     ]
 
-    if connections is not list:
+    if not isinstance(connections, list):
         connections = [connections]
 
     return connections

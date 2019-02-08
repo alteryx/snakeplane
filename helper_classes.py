@@ -409,6 +409,8 @@ class OutputAnchor:
 
     def push_metadata(self: object, plugin: object) -> None:
         out_col_metadata = self.metadata
+        if out_col_metadata is None:
+            return
 
         if self._record_info_out is None:
 

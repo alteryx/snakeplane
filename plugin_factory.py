@@ -593,8 +593,6 @@ class PluginFactory:
                         plugin.user_data,
                         plugin.logging,
                     )
-                    for _, anchor in plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(plugin)
 
             def batch_ii_close(plugin):
                 if not plugin.initialized:
@@ -611,6 +609,9 @@ class PluginFactory:
                         plugin.user_data,
                         plugin.logging,
                     )
+
+                    for _, anchor in plugin._state_vars.output_anchors.items():
+                        anchor.push_metadata(plugin)
 
                     # Flush all output records set by user
                     plugin.push_all_output_records()
@@ -635,6 +636,9 @@ class PluginFactory:
                     plugin.logging,
                 )
 
+                for _, anchor in plugin._state_vars.output_anchors.items():
+                    anchor.push_metadata(plugin)
+
                 # Flush all output records set by user
                 plugin.push_all_output_records()
 
@@ -647,6 +651,9 @@ class PluginFactory:
                     plugin.user_data,
                     plugin.logging,
                 )
+
+                for _, anchor in plugin._state_vars.output_anchors.items():
+                    anchor.push_metadata(plugin)
 
                 # Flush all output records set by user
                 plugin.push_all_output_records()
