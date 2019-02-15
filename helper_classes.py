@@ -324,7 +324,7 @@ class AyxPluginInterface:
         return self._interface_state.input_complete
 
     @completed.setter
-    def completed(self,val):
+    def completed(self, val):
         """Interface completed setter."""
         self._interface_state.input_complete = val
 
@@ -378,6 +378,7 @@ class AyxPluginInterface:
         row = self.get_values_from_record(record)
 
         self._interface_record_vars.record_list_in.append(row)
+
 
 class InputManager(UserDict):
     """Manager of input anchors with helper functions."""
