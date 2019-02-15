@@ -1,3 +1,4 @@
+"""Snakeplane plugin utilities."""
 # Built in Libraries
 import os
 from typing import Any, Dict, List
@@ -10,14 +11,14 @@ except ModuleNotFoundError:
 
 
 def get_tools_location():
+    """Get the path to the Alteryx Python SDK Tools directory."""
     return os.path.join(os.environ["APPDATA"], "Alteryx", "Tools")
 
 
 # plugin
 def get_tool_path(tool_name: str) -> str:
     """
-    Generates the path to the installed location of the specified
-    tool.
+    Generate the path to the installed location of the specified tool.
 
     Parameters
     ----------
@@ -25,7 +26,7 @@ def get_tool_path(tool_name: str) -> str:
         Name of the tool
 
     Returns
-    ---------
+    -------
     str
         Absolute file path to the tool specified
     """
@@ -35,8 +36,7 @@ def get_tool_path(tool_name: str) -> str:
 # plugin
 def get_xml_config_gui_settings(xml_dict: Dict[Any, Any]) -> Dict[Any, Any]:
     """
-    Gets the Tool XML configuration given the dictionary
-    generated from xmltodict and the tool Config.xml
+    Get the tool configuration from the config XML.
 
     Parameters
     ----------
@@ -44,7 +44,7 @@ def get_xml_config_gui_settings(xml_dict: Dict[Any, Any]) -> Dict[Any, Any]:
         Parsed XML Tool configuration
 
     Returns
-    ---------
+    -------
     OrderedDict
         GUI settings extracted from the parsed XML
     """
@@ -54,8 +54,7 @@ def get_xml_config_gui_settings(xml_dict: Dict[Any, Any]) -> Dict[Any, Any]:
 # plugin
 def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any, Any]]:
     """
-    Gets the Tool XML Input connection configuration given
-    the dictionary generated from xmltodict and the tool Config.xml
+    Get the input connection configuration from the tool XML.
 
     Parameters
     ----------
@@ -63,7 +62,7 @@ def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any,
         Parsed XML Tool configuration
 
     Returns
-    ---------
+    -------
     List[OrderedDict]
         List where each entry corresponds to an input anchor. Each entry
         is an ordered dictionary with anchor metadata.
@@ -82,8 +81,7 @@ def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any,
 # plugin
 def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any, Any]]:
     """
-    Gets the Tool XML Output connection configuration given
-    the dictionary generated from xmltodict and the tool Config.xml
+    Get the output connection configuration from the tool XML.
 
     Parameters
     ----------
@@ -91,7 +89,7 @@ def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any
         Parsed XML Tool configuration
 
     Returns
-    ---------
+    -------
     List[OrderedDict]
         List where each entry corresponds to an output anchor. Each entry
         is an ordered dictionary with anchor metadata.
