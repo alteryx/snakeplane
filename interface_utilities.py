@@ -1,4 +1,6 @@
+# Copyright (C) 2019 Alteryx, Inc. All rights reserved.
 """Interface utilities for the snakeplane library."""
+
 # Standard Library
 import logging
 from collections import namedtuple

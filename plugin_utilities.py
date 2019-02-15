@@ -1,4 +1,6 @@
+# Copyright (C) 2019 Alteryx, Inc. All rights reserved.
 """Snakeplane plugin utilities."""
+
 # Built in Libraries
 import os
 from typing import Any, Dict, List

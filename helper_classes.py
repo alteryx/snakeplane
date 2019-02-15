@@ -1,4 +1,6 @@
+# Copyright (C) 2019 Alteryx, Inc. All rights reserved.
 """Base classes for plugin, input/output anchors/managers."""
+
 # Built in Libraries
 import copy
 import logging
@@ -150,6 +152,7 @@ class AyxPlugin:
 
     @property
     def all_required_inputs_initialized(self) -> bool:
+        """Getter for checking if all required inputs have been initialized."""
         for anchor_name in self._state_vars.required_input_names:
             input = self._state_vars.input_anchors[anchor_name]
             if not input or not all([connection.initialized for connection in input]):

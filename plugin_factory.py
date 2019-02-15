@@ -1,4 +1,6 @@
+# Copyright (C) 2019 Alteryx, Inc. All rights reserved.
 """Implementation of a plugin factory for use in snakeplane framework."""
+
 # Built in Libraries
 import logging
 from functools import wraps
