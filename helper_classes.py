@@ -266,6 +266,11 @@ class AyxPlugin:
         for _, output_anchor in self._state_vars.output_anchors.items():
             output_anchor.push_records(self)
 
+    def push_all_metadata(self):
+        """Pushes all output anchor metadata downstream."""
+        for _, anchor in self._state_vars.output_anchors.items():
+            anchor.push_metadata(self)
+
     def clear_accumulated_records(self: object) -> None:
         """
         Clear all accumulated records from all plugin interfaces.

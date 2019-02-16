@@ -297,12 +297,7 @@ class PluginFactory:
                 current_plugin.update_only_mode
                 and current_plugin.all_required_inputs_initialized
             ):
-                self._build_metadata(
-                    current_plugin.input_manager,
-                    current_plugin.output_manager,
-                    current_plugin.user_data,
-                    current_plugin.logging,
-                )
+                self._build_metadata(current_plugin)
                 for _, anchor in current_plugin._state_vars.output_anchors.items():
                     anchor.push_metadata(current_plugin)
 
@@ -458,7 +453,16 @@ class PluginFactory:
 
     def build_metadata(self, func):
         """Decorate a function to inject user defined build metadata function."""
-        self._build_metadata = func
+
+        def decorated_build_metadata(plugin):
+            func(
+                plugin.input_manager,
+                plugin.output_manager,
+                plugin.user_data,
+                plugin.logging,
+            )
+
+        self._build_metadata = decorated_build_metadata
         return
 
     def process_data(self, mode: str = "batch", input_type: str = "list"):
@@ -579,43 +583,20 @@ class PluginFactory:
         setattr(self._plugin, "process_data_mode", mode)
 
         def decorator_process_data(func):
-            def build_metadata(plugin):
+            # Decorate user function to push all records and metadata
+            func = _push_all_metadata_and_records(func)
 
-                if not plugin.update_only_mode:
-                    self._build_metadata(
-                        plugin.input_manager,
-                        plugin.output_manager,
-                        plugin.user_data,
-                        plugin.logging,
-                    )
-
+            @_run_only_if_pi_initialized
             def batch_ii_close(plugin):
-                if not plugin.initialized:
-                    return
-
                 if plugin.all_inputs_completed:
                     # Build metadata
-                    build_metadata(plugin)
+                    self._build_metadata(plugin)
 
                     # Call user function to batch process data
-                    func(
-                        plugin.input_manager,
-                        plugin.output_manager,
-                        plugin.user_data,
-                        plugin.logging,
-                    )
+                    func(plugin)
 
-                    for _, anchor in plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(plugin)
-
-                    # Flush all output records set by user
-                    plugin.push_all_output_records()
-
-            # TODO: Move to helper?
+            @_run_only_if_pi_initialized
             def stream_ii_push_record(plugin, current_interface, in_record):
-                if not plugin.initialized:
-                    return
-
                 # Since we're streaming, we should clear any accumulated records
                 plugin.clear_accumulated_records()
 
@@ -623,35 +604,15 @@ class PluginFactory:
                 # ever has a record
                 current_interface.accumulate_record(in_record)
 
-                build_metadata(plugin)
-                func(
-                    plugin.input_manager,
-                    plugin.output_manager,
-                    plugin.user_data,
-                    plugin.logging,
-                )
+                self._build_metadata(plugin)
 
-                for _, anchor in plugin._state_vars.output_anchors.items():
-                    anchor.push_metadata(plugin)
+                func(plugin)
 
-                # Flush all output records set by user
-                plugin.push_all_output_records()
-
+            @_run_only_if_pi_initialized
             def source_pi_push_all_records(plugin, n_record_limit):
-                build_metadata(plugin)
+                self._build_metadata(plugin)
 
-                func(
-                    plugin.input_manager,
-                    plugin.output_manager,
-                    plugin.user_data,
-                    plugin.logging,
-                )
-
-                for _, anchor in plugin._state_vars.output_anchors.items():
-                    anchor.push_metadata(plugin)
-
-                # Flush all output records set by user
-                plugin.push_all_output_records()
+                func(plugin)
 
             if mode.lower() == "batch":
                 self.build_ii_push_record(
@@ -696,3 +657,33 @@ class PluginFactory:
 
         """
         return self._plugin
+
+
+def _run_only_if_pi_initialized(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        plugin = args[0]
+        if not plugin.initialized:
+            return
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def _push_all_metadata_and_records(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        plugin = args[0]
+
+        func(
+            plugin.input_manager,
+            plugin.output_manager,
+            plugin.user_data,
+            plugin.logging,
+        )
+
+        plugin.push_all_metadata()
+        plugin.push_all_output_records()
+
+    return wrapper
