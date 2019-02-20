@@ -255,7 +255,6 @@ class PluginFactory:
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
             if current_plugin.all_inputs_completed:
                 func(current_plugin)
-                current_plugin.close_all_outputs()
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
@@ -685,5 +684,8 @@ def _push_all_metadata_and_records(func):
 
         plugin.push_all_metadata()
         plugin.push_all_output_records()
+
+        if plugin.all_inputs_completed:
+            plugin.close_all_outputs()
 
     return wrapper
