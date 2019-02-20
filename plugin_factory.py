@@ -1,16 +1,33 @@
+# Copyright (C) 2019 Alteryx, Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+"""Implementation of a plugin factory for use in snakeplane framework."""
+
 # Built in Libraries
 import logging
 from functools import wraps
 
 # 3rd Party Libraries
 import snakeplane.interface_utilities as interface_utils
-from snakeplane.helper_classes import AnchorMetadata, AyxPlugin, AyxPluginInterface
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
 import xmltodict
 
 
 class PluginFactory:
     """
+    Class for generating a plugin using the snakeplane framework.
+
     The PluginFactory follows a Flask-like paradigm of leveraging decorators to inject
     custom user methods while abstracting the boilerplate operations for input and
     output with the Alteryx Engine.
@@ -34,7 +51,7 @@ class PluginFactory:
 
     def __init__(self, tool_name: str):
         """
-        Initializes a PluginFactory object.
+        Initialize a PluginFactory object.
 
         Parameters
         ----------
@@ -85,8 +102,7 @@ class PluginFactory:
 
     def build_pi_init(self, func: object):
         """
-        A decorator that is used to register a user defined pi_init (plugin initialize)
-        function to be injected into the generated AyxPlugin class.
+        Register a custom pi_init method.
 
         Parameters
         ----------
@@ -95,7 +111,7 @@ class PluginFactory:
         initialize the plugin.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
@@ -113,7 +129,7 @@ class PluginFactory:
             val = func(current_plugin)
 
             # Boilerplate Side Effects
-            current_plugin.set_initialization_state(val)
+            current_plugin.initialized = val
 
             return val
 
@@ -121,8 +137,7 @@ class PluginFactory:
 
     def build_pi_add_incoming_connection(self, func: object):
         """
-        A decorator that is used to register a user defined pi_add_incoming_connection
-        function to be injected into the generated AyxPlugin class.
+        Register a custom pi_add_incoming_connection method.
 
         Parameters
         ----------
@@ -132,7 +147,7 @@ class PluginFactory:
         AyxInterface object.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
@@ -159,8 +174,7 @@ class PluginFactory:
 
     def build_pi_push_all_records(self, func: object):
         """
-        A decorator that is used to register a user defined pi_push_all_records
-        function to be injected into the generated AyxPlugin class.
+        Register a custom pi_push_all_records method.
 
         Parameters
         ----------
@@ -172,14 +186,14 @@ class PluginFactory:
         otherwise False.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
 
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
-            if current_plugin.is_update_only_mode():
+            if current_plugin.update_only_mode:
                 return True
 
             if len(current_plugin._state_vars.required_input_names) == 0:
@@ -198,8 +212,7 @@ class PluginFactory:
 
     def build_pi_add_outgoing_connection(self, func: object):
         """
-        A decorator that is used to register a user defined pi_add_outgoing_connection
-        function to be injected into the generated AyxPlugin class.
+        Register a custom pi_add_outgoing_connection method.
 
         Parameters
         ----------
@@ -209,7 +222,7 @@ class PluginFactory:
         The function will return True to signify that the connection has been accepted.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
@@ -224,8 +237,7 @@ class PluginFactory:
 
     def build_pi_close(self, func: object) -> None:
         """
-        A decorator that is used to register a user defined pi_close function
-        to be injected into the generated AyxPlugin class.
+        Register a custom pi_close method.
 
         Parameters
         ----------
@@ -234,23 +246,21 @@ class PluginFactory:
         all records for each of the defined incoming connections have been processed.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
 
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
-            if current_plugin.all_inputs_completed():
+            if current_plugin.all_inputs_completed:
                 func(current_plugin)
-                current_plugin.close_all_outputs()
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
     def build_ii_init(self, func: object):
         """
-        A decorator that is used to register a user defined ii_init function
-        to be injected into the generated AyxPlugin class.
+        Register a custom ii_init method.
 
         Parameters
         ----------
@@ -260,7 +270,7 @@ class PluginFactory:
         dragged onto the canvas.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
@@ -268,30 +278,25 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
-            current_interface.set_record_info_in(record_info_in)
+            current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
             metadata = interface_utils.get_column_metadata(record_info_in)
 
-            current_interface.set_col_metadata(metadata)
+            current_interface.anchor_metadata = metadata
 
             init_success = func(current_interface, record_info_in)
 
             if not init_success:
-                current_plugin.set_initialization_state(False)
+                current_plugin.initialized = False
                 current_interface.initialized = False
                 return False
 
             if (
-                current_plugin.is_update_only_mode()
-                and current_plugin.all_required_inputs_initialized()
+                current_plugin.update_only_mode
+                and current_plugin.all_required_inputs_initialized
             ):
-                self._build_metadata(
-                    current_plugin.input_manager,
-                    current_plugin.output_manager,
-                    current_plugin.user_data,
-                    current_plugin.logging,
-                )
+                self._build_metadata(current_plugin)
                 for _, anchor in current_plugin._state_vars.output_anchors.items():
                     anchor.push_metadata(current_plugin)
 
@@ -301,8 +306,7 @@ class PluginFactory:
 
     def build_ii_push_record(self, func: object):
         """
-        A decorator that is used to register a user defined ii_push_record function
-        to be injected into the generated AyxPlugin class.
+        Register a custom ii_push_record method.
 
         Parameters
         ----------
@@ -311,31 +315,17 @@ class PluginFactory:
         for each incoming record for each input connection.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
 
         @wraps(func)
         def wrap_ii_push_record(current_interface, in_record):
-            """
-            Called when an input record is being sent to the plugin.
-            :param in_record: The data for the incoming record.
-            """
             current_plugin = current_interface.parent
 
-            if (
-                not current_plugin.is_initialized()
-                or current_plugin.is_update_only_mode()
-            ):
+            if not current_plugin.initialized or current_plugin.update_only_mode:
                 return False
-
-            _, column_metadata = current_interface.create_record_for_input_records_list(
-                in_record
-            )
-
-            # Attach local column info to interface object
-            current_interface.set_col_metadata(column_metadata)
 
             func(current_plugin, current_interface, in_record)
             return True
@@ -344,8 +334,7 @@ class PluginFactory:
 
     def build_ii_update_progress(self, func: object):
         """
-        A decorator that is used to register a user defined ii_update_progress function
-        to be injected into the generated AyxPlugin class.
+        Register a custom ii_update_progress method.
 
         Parameters
         ----------
@@ -354,7 +343,7 @@ class PluginFactory:
         reporting the number of records it has pushed to the plugin.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
@@ -373,8 +362,7 @@ class PluginFactory:
 
     def build_ii_close(self, func: object):
         """
-        A decorator that is used to register a user defined ii_close function
-        to be injected into the generated AyxPlugin class.
+        Register a custom ii_close method.
 
         Parameters
         ----------
@@ -384,7 +372,7 @@ class PluginFactory:
         ii_push_record step.
 
         Returns
-        --------
+        -------
         None
         This method produces side-effects by registering the user defined function
         """
@@ -393,10 +381,10 @@ class PluginFactory:
         def wrap_ii_close(current_interface):
             current_plugin = current_interface.parent
 
-            if current_plugin.is_update_only_mode():
+            if current_plugin.update_only_mode:
                 return
 
-            current_interface.set_completed()
+            current_interface.completed = True
 
             return func(current_plugin)
 
@@ -404,10 +392,7 @@ class PluginFactory:
 
     def initialize_plugin(self, func):
         """
-        The initialize plugin method takes a user defined function
-        as a parameter, and automatically handles the boilerplate
-        for user input handling in the Python SDK.  There are specific
-        requirements for the user defined function specified below.
+        Decorate a user defined function to inject custom intialization.
 
         Parameters
         ----------
@@ -435,14 +420,13 @@ class PluginFactory:
                     to meet conditions that evaluate True.
 
         Returns
-        --------
+        -------
         This method doesn't return a value.  It creates side-effects by altering
         the state of the AyxPlugin class declaration that is returned by the
         PluginFactory.generate_plugin() method.
 
         Examples
         --------
-
             @factory.initialize_plugin
             def init(workflow_config, user_data, logger):
                 user_data.some_variable = workflow_config.get(
@@ -467,14 +451,26 @@ class PluginFactory:
         self.build_pi_init(wrap_init)
 
     def build_metadata(self, func):
-        self._build_metadata = func
+        """Decorate a function to inject user defined build metadata function."""
+
+        def decorated_build_metadata(plugin):
+            func(
+                plugin.input_manager,
+                plugin.output_manager,
+                plugin.user_data,
+                plugin.logging,
+            )
+
+        self._build_metadata = decorated_build_metadata
         return
 
     def process_data(self, mode: str = "batch", input_type: str = "list"):
         """
+        Decorate a function to inject user defined functionality.
+
         The process_data method is used to allow a user to inject
         Python code for processing records without having to specify
-        boilerplat for input/output.
+        boilerplate for input/output.
 
         The process data plugin method takes both direct parameters,
         mode and input_type, as well as indirect parameter of a user
@@ -507,7 +503,7 @@ class PluginFactory:
         Pandas DataFrame object.
 
         Returns
-        --------
+        -------
         Callable[[Callable[object, object, Any], None]]
             The process_data method is a method which returns a
             higher order function.  This higher order function
@@ -518,35 +514,34 @@ class PluginFactory:
             It needs to meet specific requirements as to the parameters
             it accepts and the side effects it produces:
 
-            Parameters
-            ----------
-            input_mgr : object
-            The UDF will be given an input_mgr object as its first parameter.
-            This object allows the user to reference any of a given plugin's
-            defined input anchors, which facilitate fetching input data.
+        Parameters
+        ----------
+        input_mgr : object
+        The UDF will be given an input_mgr object as its first parameter.
+        This object allows the user to reference any of a given plugin's
+        defined input anchors, which facilitate fetching input data.
 
-            output_mgr : object
-            The UDF will be given an output_mgr object as its second parameter.
-            This object allows the user to reference any of a given plugin's
-            defined output anchors, which facilitate setting output data.
+        output_mgr : object
+        The UDF will be given an output_mgr object as its second parameter.
+        This object allows the user to reference any of a given plugin's
+        defined output anchors, which facilitate setting output data.
 
-            user_data : object
-            A SimpleNamespace object that allows the user to store variables
-            (for example values from the workflow_config) to be accessed
-            globally in later steps for the PluginFactory.  In the context of
-            the UDF, this is a way to fetch values set in the initialize_plugin
-            step to use for the process_data logic.
+        user_data : object
+        A SimpleNamespace object that allows the user to store variables
+        (for example values from the workflow_config) to be accessed
+        globally in later steps for the PluginFactory.  In the context of
+        the UDF, this is a way to fetch values set in the initialize_plugin
+        step to use for the process_data logic.
 
-            Returns
-            --------
-            None
-            The UDF doesn't return any values.  Instead, it needs to 'send'
-            data as a side effect, by calling methods on the output_anchor
-            object it gets from the output_mgr object it is provided.
+        Returns
+        -------
+        None
+        The UDF doesn't return any values.  Instead, it needs to 'send'
+        data as a side effect, by calling methods on the output_anchor
+        object it gets from the output_mgr object it is provided.
 
         Examples
-        -------
-
+        --------
         @factory.process_data(mode="batch", input_type="dataframe")
         def process_data(input_mgr, output_mgr, user_data, logger):
             input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
@@ -587,42 +582,20 @@ class PluginFactory:
         setattr(self._plugin, "process_data_mode", mode)
 
         def decorator_process_data(func):
-            def build_metadata(plugin):
+            # Decorate user function to push all records and metadata
+            func = _push_all_metadata_and_records(func)
 
-                if not plugin.is_update_only_mode():
-                    self._build_metadata(
-                        plugin.input_manager,
-                        plugin.output_manager,
-                        plugin.user_data,
-                        plugin.logging,
-                    )
-                    for _, anchor in plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(plugin)
-
+            @_run_only_if_pi_initialized
             def batch_ii_close(plugin):
-                if not plugin.is_initialized():
-                    return
-
-                if plugin.all_inputs_completed():
+                if plugin.all_inputs_completed:
                     # Build metadata
-                    build_metadata(plugin)
+                    self._build_metadata(plugin)
 
                     # Call user function to batch process data
-                    func(
-                        plugin.input_manager,
-                        plugin.output_manager,
-                        plugin.user_data,
-                        plugin.logging,
-                    )
+                    func(plugin)
 
-                    # Flush all output records set by user
-                    plugin.push_all_output_records()
-
-            # TODO: Move to helper?
+            @_run_only_if_pi_initialized
             def stream_ii_push_record(plugin, current_interface, in_record):
-                if not plugin.is_initialized():
-                    return
-
                 # Since we're streaming, we should clear any accumulated records
                 plugin.clear_accumulated_records()
 
@@ -630,29 +603,15 @@ class PluginFactory:
                 # ever has a record
                 current_interface.accumulate_record(in_record)
 
-                build_metadata(plugin)
-                func(
-                    plugin.input_manager,
-                    plugin.output_manager,
-                    plugin.user_data,
-                    plugin.logging,
-                )
+                self._build_metadata(plugin)
 
-                # Flush all output records set by user
-                plugin.push_all_output_records()
+                func(plugin)
 
+            @_run_only_if_pi_initialized
             def source_pi_push_all_records(plugin, n_record_limit):
-                build_metadata(plugin)
+                self._build_metadata(plugin)
 
-                func(
-                    plugin.input_manager,
-                    plugin.output_manager,
-                    plugin.user_data,
-                    plugin.logging,
-                )
-
-                # Flush all output records set by user
-                plugin.push_all_output_records()
+                func(plugin)
 
             if mode.lower() == "batch":
                 self.build_ii_push_record(
@@ -675,7 +634,8 @@ class PluginFactory:
 
     def generate_plugin(self):
         """
-        This method returns the constructed class definition for an AyxPlugin object.
+        Return the constructed class definition for an AyxPlugin object.
+
         The AyxPlugin class definition is initialized by the Alteryx Engine via the
         Alteryx Python SDK.
 
@@ -684,7 +644,7 @@ class PluginFactory:
         None
 
         Returns
-        --------
+        -------
         object: AyxPlugin class definition
         The returned object is a modified AyxPlugin class definition, updated with
         the user definied functions injected by use of the various decorators the user
@@ -698,5 +658,34 @@ class PluginFactory:
         return self._plugin
 
 
-def create_anchor_metadata():
-    return AnchorMetadata()
+def _run_only_if_pi_initialized(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        plugin = args[0]
+        if not plugin.initialized:
+            return
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def _push_all_metadata_and_records(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        plugin = args[0]
+
+        func(
+            plugin.input_manager,
+            plugin.output_manager,
+            plugin.user_data,
+            plugin.logging,
+        )
+
+        plugin.push_all_metadata()
+        plugin.push_all_output_records()
+
+        if plugin.all_inputs_completed:
+            plugin.close_all_outputs()
+
+    return wrapper

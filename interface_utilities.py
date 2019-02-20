@@ -1,3 +1,18 @@
+# Copyright (C) 2019 Alteryx, Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+"""Interface utilities for the snakeplane library."""
+
 # Standard Library
 import logging
 from collections import namedtuple
@@ -19,6 +34,7 @@ Column = namedtuple(
 
 
 def get_dataframe_from_records(record_info, record_list):
+    """Convert a list of records into a dataframe."""
     if pd is None:
         err_str = f"Pandas must be installed."
         logger = logging.getLogger(__name__)
@@ -37,9 +53,7 @@ def get_dataframe_from_records(record_info, record_list):
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
     """
-    Takes an Alteryx Field object associated with record metadata (record_info_in)
-    and a single record and extracts the data from the record using the getter
-    function assoicated with the type of that field (e.g. get_as_int32, etc.)
+    Extract a field from a record, dynamically calculating its type.
 
     Parameters
     ----------
@@ -53,7 +67,7 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         A single record object from Alteryx that contains a row of data.
 
     Returns
-    ---------
+    -------
     Any
         The return value of this function can be any of types blob, int32, int64,
         dobule, bool, or string. The returned value represents the parsed/typed
@@ -86,10 +100,9 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         raise TypeError(err_str)
 
 
-# interface
 def get_column_names_list(record_info_in: object) -> List[str]:
     """
-    Collects the column names from an Alteryx record info object
+    Extract the column names from an Alteryx record info object.
 
     Parameters
     ----------
@@ -103,13 +116,9 @@ def get_column_names_list(record_info_in: object) -> List[str]:
     return [field.name for field in record_info_in]
 
 
-# interface
-
-
 def get_column_metadata(record_info_in: object) -> dict:
     """
-    Collects the column names, types, sizes, sources, and descriptions from an Alteryx
-    record info object.
+    Extract record metadata from an Alteryx record info object.
 
     Parameters
     ----------
@@ -137,28 +146,25 @@ def get_column_metadata(record_info_in: object) -> dict:
     return metadata
 
 
-# interface
 def get_column_types_list(record_info_in: object) -> List[object]:
     """
-    Collects the column types from an Alteryx record info object
+    Collect the column types from an Alteryx record info object.
 
     Parameters
     ----------
     record_info_in : object
         An Alteryx RecordInfo object
     Returns
-    ---------
+    -------
     List[object]
         A list of the column types as per the AlteryxSDK
     """
     return [field.type for field in record_info_in]
 
 
-# interface
 def set_field_value(field: object, value: Any, record_creator: object) -> None:
     """
-    Takes a python value and writes it to its respective field in a given
-    record_creator object.
+    Write a value to its respective field in a given record_creator object.
 
     Parameters
     ----------
@@ -182,7 +188,7 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         Alteryx RecordRef object.
 
     Returns
-    ---------
+    -------
     None
         This is a stateful function that produces side effects by modifying
         the record_creator object.
@@ -190,15 +196,15 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
     if value is None:
         field.set_null(record_creator)
     elif field.type == sdk.FieldType.bool:
-        field.set_from_bool(record_creator, value)
+        field.set_from_bool(record_creator, bool(value))
     elif field.type == sdk.FieldType.blob:
-        field.set_from_blob(record_creator, value)
+        field.set_from_blob(record_creator, bytes(value))
     elif field.type == sdk.FieldType.double:
-        field.set_from_double(record_creator, value)
+        field.set_from_double(record_creator, float(value))
     elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
-        field.set_from_int32(record_creator, value)
+        field.set_from_int32(record_creator, int(value))
     elif field.type == sdk.FieldType.int64:
-        field.set_from_int64(record_creator, value)
+        field.set_from_int64(record_creator, int(value))
     elif field.type in {
         sdk.FieldType.string,
         sdk.FieldType.v_string,
@@ -208,10 +214,9 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         sdk.FieldType.datetime,
         sdk.FieldType.time,
     }:
-        field.set_from_string(record_creator, value)
+        field.set_from_string(record_creator, str(value))
 
 
-# interface
 def add_new_field_to_record_info(
     record_info: object,
     field_name: str,
@@ -221,8 +226,7 @@ def add_new_field_to_record_info(
     field_desc: str,
 ) -> None:
     """
-    Attaches a field of specified name, type, and size to the specified Alteryx
-    RecordInfo object.
+    Attaches a field to the specified Alteryx RecordInfo object.
 
     Parameters
     ----------
@@ -266,7 +270,7 @@ def add_new_field_to_record_info(
         A short description of what this field is
 
     Returns
-    ---------
+    -------
     None
         This is a stateful function that produces side effects by modifying
         the record_info object.
@@ -292,9 +296,10 @@ def add_new_field_to_record_info(
     )
 
 
-# interface
 def build_ayx_record_info(metadata: dict, record_info: object) -> None:
     """
+    Create a record info object from a metadata dictionary.
+
     Populates a an Alteryx RecordInfo object with field objects based on the
     contents of the names and types specified in names_list and types_list,
     respectively.
@@ -314,19 +319,18 @@ def build_ayx_record_info(metadata: dict, record_info: object) -> None:
         each record of data passing through the tool.
 
     Returns
-    ---------
+    -------
     None
         This is a stateful function that produces side effects by modifying
         the record_info object.
 
     """
-    output_columns = metadata.get_columns()
+    output_columns = metadata.columns
 
     for output_column in output_columns:
         add_output_column_to_record_info(output_column, record_info)
 
 
-# interface
 def build_ayx_record_from_list(
     values_list: List[Any],
     metadata_list: List[dict],
@@ -334,6 +338,8 @@ def build_ayx_record_from_list(
     record_creator: Optional[object] = None,
 ) -> Tuple[object, object]:
     """
+    Build a record from a list of values.
+
     Takes a list of values that represents a single row of data, along with metadata
     and a blank or already populated Alteryx RecordInfo object, and returns a tuple
     containing a populated Alteryx RecordRef object and an already initialized
@@ -373,7 +379,7 @@ def build_ayx_record_from_list(
         The function will automatically reset the record_creator if one is passed in.
 
     Returns
-    ---------
+    -------
     Tuple(object, object)
         First value in tuple:
             Alteryx RecordRef object, with each Field populated with the respective
@@ -413,12 +419,11 @@ def build_ayx_record_from_list(
     return (ayx_record, record_creator)
 
 
-# interface
 def add_output_column_to_record_info(
     output_column: tuple, record_info_out: object
 ) -> None:
     """
-    Adds a column to a RecordInfo object
+    Add a column to a RecordInfo object.
 
     Parameters
     ----------
@@ -429,7 +434,7 @@ def add_output_column_to_record_info(
         RecordInfo object to append the new column to
 
     Returns
-    ---------
+    -------
     None
     """
     add_new_field_to_record_info(
@@ -442,10 +447,9 @@ def add_output_column_to_record_info(
     )
 
 
-# interface
 def is_dataframe(input: Any) -> bool:
     """
-    Checks if the input variable is a pandas dataframe
+    Check if the input variable is a pandas dataframe.
 
     Parameters
     ----------
@@ -453,7 +457,7 @@ def is_dataframe(input: Any) -> bool:
         Any variable
 
     Returns
-    ---------
+    -------
     bool
         Indication if the input is a pandas dataframe
     """
@@ -464,10 +468,9 @@ def is_dataframe(input: Any) -> bool:
     return isinstance(input, pd.DataFrame)
 
 
-# interface
 def dataframe_to_list(df: object) -> List[List[Any]]:
     """
-    Converts a pandas dataframe to a list of lists
+    Convert a pandas dataframe to a list of lists.
 
     Parameters
     ----------
@@ -475,7 +478,7 @@ def dataframe_to_list(df: object) -> List[List[Any]]:
         A pandas dataframe
 
     Returns
-    ---------
+    -------
     List[List[Any]]
         A list of lists of the pandas dataframe data
     """
