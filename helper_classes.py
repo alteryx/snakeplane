@@ -17,7 +17,7 @@
 import copy
 import logging
 import os
-from collections import UserDict, namedtuple
+from collections import UserDict
 from functools import partial
 from types import SimpleNamespace
 from typing import List, Tuple, Union
@@ -527,9 +527,40 @@ class OutputAnchor:
         self.data = None
 
 
-Column_Metadata = namedtuple(
-    "Column_Metadata", ["name", "type", "size", "scale", "source", "description"]
-)
+class ColumnMetadata:
+    """Column Metadata tracking class."""
+
+    def __init__(self, name, col_type, size, scale, source, description):
+        self.name = name
+        self.type = col_type
+        self.size = size
+        self.scale = scale
+        self.source = source
+        self.description = description
+
+    def __deepcopy__(self, memo):
+        """Override of deep copy method."""
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k not in ["type"]:
+                setattr(result, k, copy.deepcopy(v, memo))
+
+        setattr(result, "type", self.type)
+        return result
+
+    def __iter__(self):
+        """Generate the iterable for this class."""
+        for el in [
+            self.name,
+            self.type,
+            self.size,
+            self.scale,
+            self.source,
+            self.description,
+        ]:
+            yield el
 
 
 class AnchorMetadata:
@@ -551,7 +582,7 @@ class AnchorMetadata:
     def add_column(self, name, col_type, size=256, scale=0, source="", description=""):
         """Add a column to this anchor."""
         self.columns.append(
-            Column_Metadata(name, col_type, size, scale, source, description)
+            ColumnMetadata(name, col_type, size, scale, source, description)
         )
 
     def index_of(self, name):
