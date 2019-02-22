@@ -22,11 +22,11 @@ from functools import partial
 from types import SimpleNamespace
 from typing import List, Tuple, Union
 
-# 3rd Party Libraries
-import pandas as pd
-
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
+
+# 3rd Party Libraries
+import pandas as pd
 
 # Custom libraries
 import snakeplane.interface_utilities as interface_utils
@@ -326,7 +326,7 @@ class AyxPluginInterface:
             try:
                 return pd.DataFrame(
                     self._interface_record_vars.record_list_in,
-                    columns=self._interface_record_vars.column_metadata.get_column_names(),
+                    columns=self.metadata.get_column_names(),
                 )
             except ImportError:
                 err_str = """The Pandas library must be installed to

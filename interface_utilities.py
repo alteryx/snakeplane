@@ -18,11 +18,12 @@ import logging
 from collections import namedtuple
 from typing import Any, List, Optional, Tuple
 
+# Alteryx Libraries
+import AlteryxPythonSDK as sdk
+
 # 3rd Party Libraries
 import pandas as pd
 
-# Alteryx Libraries
-import AlteryxPythonSDK as sdk
 
 # Create a column named tuple for use in below functions
 Column = namedtuple(
