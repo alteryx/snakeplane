@@ -23,10 +23,7 @@ from types import SimpleNamespace
 from typing import List, Tuple, Union
 
 # 3rd Party Libraries
-try:
-    import pandas as pd
-except ModuleNotFoundError:
-    pd = None
+import pandas as pd
 
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
@@ -326,17 +323,17 @@ class AyxPluginInterface:
         elif self.parent.process_data_input_type == "list":
             return self._interface_record_vars.record_list_in
         else:
-            if pd is None:
+            try:
+                return pd.DataFrame(
+                    self._interface_record_vars.record_list_in,
+                    columns=self._interface_record_vars.column_metadata.get_column_names(),
+                )
+            except ImportError:
                 err_str = """The Pandas library must be installed to
                             allow dataframe as input_type."""
                 logger = logging.getLogger(__name__)
                 logger.error(err_str)
                 raise ImportError(err_str)
-
-            return pd.DataFrame(
-                self._interface_record_vars.record_list_in,
-                columns=self._interface_record_vars.column_metadata.get_column_names(),
-            )
 
     @property
     def completed(self):
