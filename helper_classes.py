@@ -398,16 +398,9 @@ class AyxPluginInterface:
 
 
 class InputManager(UserDict):
-    """Manager of input anchors with helper functions."""
-
-    def __init__(self, plugin):
-        self._plugin = plugin
-        self.data = self._plugin._state_vars.input_anchors
-
     @property
     def tool_id(self):
         """Getter for the current tool ID."""
-        return self._plugin._engine_vars.n_tool_id
 
     @property
     def workflow_config(self):
