@@ -88,17 +88,22 @@ class PluginFactory:
         def noop(*args, **kwargs) -> None:
             pass
 
-        self.build_pi_init(noop),
+        def always_true(*args, **kwargs):
+            return True
+
+        self.build_pi_init(always_true),
         self.build_pi_add_incoming_connection(noop),
         self.build_pi_push_all_records(noop),
-        self.build_pi_add_outgoing_connection(lambda *args, **kwargs: True)
+        self.build_pi_add_outgoing_connection(always_true)
         self.build_pi_close(noop)
 
-        self.build_ii_init(lambda *args, **kwargs: True),
-        self.build_ii_push_record(lambda *args, **kwargs: True),
+        self.build_ii_init(always_true),
+        self.build_ii_push_record(always_true),
         self.build_ii_update_progress(noop),
         self.build_ii_close(noop)
         self.build_metadata(noop)
+
+        self._init_func = always_true
 
     def build_pi_init(self, func: object):
         """
@@ -296,6 +301,7 @@ class PluginFactory:
                 current_plugin.update_only_mode
                 and current_plugin.all_required_inputs_initialized
             ):
+                self._init_func(current_plugin)
                 self._build_metadata(current_plugin)
                 for _, anchor in current_plugin._state_vars.output_anchors.items():
                     anchor.push_metadata(current_plugin)
@@ -442,13 +448,16 @@ class PluginFactory:
         """
 
         def wrap_init(current_plugin):
-            return func(
-                current_plugin.workflow_config,
+
+            val = func(
+                current_plugin.input_manager,
                 current_plugin.user_data,
                 current_plugin.logging,
             )
+            current_plugin.initialized = val
+            return val
 
-        self.build_pi_init(wrap_init)
+        self._init_func = wrap_init
 
     def build_metadata(self, func):
         """Decorate a function to inject user defined build metadata function."""
@@ -588,6 +597,10 @@ class PluginFactory:
             @_run_only_if_pi_initialized
             def batch_ii_close(plugin):
                 if plugin.all_inputs_completed:
+                    # Run initialization here
+                    if not self._init_func(plugin):
+                        return
+
                     # Build metadata
                     self._build_metadata(plugin)
 
@@ -609,8 +622,10 @@ class PluginFactory:
 
             @_run_only_if_pi_initialized
             def source_pi_push_all_records(plugin, n_record_limit):
-                self._build_metadata(plugin)
+                if not self._init_func(plugin):
+                    return
 
+                self._build_metadata(plugin)
                 func(plugin)
 
             if mode.lower() == "batch":
@@ -621,6 +636,9 @@ class PluginFactory:
                 )
                 self.build_ii_close(batch_ii_close)
             elif mode.lower() == "stream":
+                # Streaming is the unique case for initialization
+                # It should be ran in pi_init.
+                self.build_pi_init(self._init_func)
                 self.build_ii_push_record(stream_ii_push_record)
             elif mode.lower() == "source":
                 self.build_pi_push_all_records(source_pi_push_all_records)
