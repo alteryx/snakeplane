@@ -447,15 +447,10 @@ class PluginFactory:
                 return init_success
         """
 
+        @wraps(func)
         def wrap_init(current_plugin):
-
-            val = func(
-                current_plugin.input_manager,
-                current_plugin.user_data,
-                current_plugin.logging,
-            )
-            current_plugin.initialized = val
-            return val
+            current_plugin.initialized = _apply_parameter_requests(func)(current_plugin)
+            return current_plugin.initialized
 
         self._init_func = wrap_init
 
@@ -463,12 +458,7 @@ class PluginFactory:
         """Decorate a function to inject user defined build metadata function."""
 
         def decorated_build_metadata(plugin):
-            func(
-                plugin.input_manager,
-                plugin.output_manager,
-                plugin.user_data,
-                plugin.logging,
-            )
+            return _apply_parameter_requests(func)(plugin)
 
         self._build_metadata = decorated_build_metadata
         return
@@ -592,6 +582,7 @@ class PluginFactory:
 
         def decorator_process_data(func):
             # Decorate user function to push all records and metadata
+            func = _apply_parameter_requests(func)
             func = _push_all_metadata_and_records(func)
 
             @_run_only_if_pi_initialized
@@ -690,15 +681,8 @@ def _run_only_if_pi_initialized(func):
 
 def _push_all_metadata_and_records(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
-        plugin = args[0]
-
-        func(
-            plugin.input_manager,
-            plugin.output_manager,
-            plugin.user_data,
-            plugin.logging,
-        )
+    def wrapper(plugin):
+        func(plugin)
 
         plugin.push_all_metadata()
         plugin.push_all_output_records()
@@ -707,3 +691,36 @@ def _push_all_metadata_and_records(func):
             plugin.close_all_outputs()
 
     return wrapper
+
+
+def _apply_parameter_requests(func):
+    @wraps(func)
+    def wrapped(plugin):
+        import inspect
+
+        sig = inspect.signature(func)
+
+        func_params = {
+            "input_mgr": plugin.input_manager,
+            "output_mgr": plugin.output_manager,
+            "workflow_config": plugin.input_manager.workflow_config,
+            "user_data": plugin.user_data,
+            "logger": plugin.logging,
+        }
+
+        try:
+            # Get the expected parameter names
+            param_names = [name for name, param in sig.parameters.items()]
+            passed_params = {name: func_params[name] for name in param_names}
+        except KeyError:
+            # Failed to build the requested params, using defaults
+            return func(
+                plugin.input_manager,
+                plugin.output_manager,
+                plugin.user_data,
+                plugin.logging,
+            )
+        else:
+            return func(**passed_params)
+
+    return wrapped
