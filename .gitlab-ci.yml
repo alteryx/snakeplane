@@ -1,12 +1,8 @@
 stages:
-  - test
   - code_quality
-  - documentation
-  - attempt_build
 
 run-linting:
   image: $CI_REGISTRY/docker-images/python-lint:latest
-  dependencies: [unittest]
   stage: code_quality
   script:
     - python3 -m pip install -r env/requirements.txt
@@ -23,7 +19,6 @@ run-linting:
 sonarqube-code-quality:
   image: registry.git.alteryx.com/alterml/code-free-ml-tools/sonarscanner:latest
   stage: code_quality
-  dependencies: [unittest]
   tags:
     - linux-docker
   script:
