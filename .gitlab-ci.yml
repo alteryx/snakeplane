@@ -5,7 +5,7 @@ run-linting:
   image: $CI_REGISTRY/docker-images/python-lint:latest
   stage: code_quality
   script:
-    - python3 -m pip install -r env/requirements.txt
+    - python3 -m pip install -r requirements.txt
     - flake8 --ignore N803,N806,W503,E501 .
     - black --check . # Only check the files with black
     - pydocstyle --convention=numpy --add-ignore=D202 .
