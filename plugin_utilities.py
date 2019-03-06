@@ -18,9 +18,57 @@ import os
 from typing import Any, Dict, List
 
 
+def split_abs_path(path):
+    """Split an absolute path into its parts, doing reduction on double dots."""
+    allparts = []
+    while 1:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == path:  # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            allparts.insert(0, parts[1])
+
+    drop_idxs = []
+    for idx, part in enumerate(allparts):
+        if part == "..":
+            drop_idxs.extend([idx - 1, idx])
+
+    ret_val = []
+    for idx, part in enumerate(allparts):
+        if idx not in drop_idxs:
+            ret_val.append(part)
+
+    return ret_val
+
+
+def contains_path(full, part):
+    """Return a boolean indicating if the part path is a subset of the full path."""
+    full_parts = split_abs_path(full)
+    part_parts = split_abs_path(part)
+
+    for idx, name in enumerate(part_parts):
+        if full_parts[idx] != name:
+            return False
+
+    return True
+
+
 def get_tools_location():
     """Get the path to the Alteryx Python SDK Tools directory."""
-    return os.path.join(os.environ["APPDATA"], "Alteryx", "Tools")
+    admin_path = os.path.join(os.environ["APPDATA"], "Alteryx", "Tools")
+    user_path = os.path.join(os.environ["PROGRAMDATA"], "Alteryx", "Tools")
+    if contains_path(__file__, admin_path):
+        return admin_path
+
+    if contains_path(__file__, user_path):
+        return user_path
+
+    raise RuntimeError("Tool is not located in Alteryx install locations.")
 
 
 # plugin
