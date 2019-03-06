@@ -18,14 +18,12 @@ import logging
 from collections import namedtuple
 from typing import Any, List, Optional, Tuple
 
-# 3rd Party Libraries
-try:
-    import pandas as pd
-except ModuleNotFoundError:
-    pd = None
-
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
+
+# 3rd Party Libraries
+import pandas as pd
+
 
 # Create a column named tuple for use in below functions
 Column = namedtuple(
@@ -48,7 +46,14 @@ def get_dataframe_from_records(record_info, record_list):
         row = [get_dynamic_type_value(field, record) for field in record_info]
         data.append(row)
 
-    return pd.DataFrame(data, columns=col_names)
+    try:
+        return pd.DataFrame(data, columns=col_names)
+    except ImportError:
+        err_str = """The Pandas library must be installed to
+                    allow dataframe as input_type."""
+        logger = logging.getLogger(__name__)
+        logger.error(err_str)
+        raise ImportError(err_str)
 
 
 def get_dynamic_type_value(field: object, record: object) -> Any:
@@ -200,6 +205,8 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, bytes(value))
     elif field.type == sdk.FieldType.double:
+        field.set_from_double(record_creator, float(value))
+    elif field.type == sdk.FieldType.float:
         field.set_from_double(record_creator, float(value))
     elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
         field.set_from_int32(record_creator, int(value))
@@ -461,11 +468,14 @@ def is_dataframe(input: Any) -> bool:
     bool
         Indication if the input is a pandas dataframe
     """
-    if pd is None:
-        # Can't be a dataframe because pandas isn't available for import
-        return False
-
-    return isinstance(input, pd.DataFrame)
+    try:
+        return isinstance(input, pd.DataFrame)
+    except ImportError:
+        err_str = """The Pandas library must be installed to
+                    allow dataframe as input_type."""
+        logger = logging.getLogger(__name__)
+        logger.error(err_str)
+        raise ImportError(err_str)
 
 
 def dataframe_to_list(df: object) -> List[List[Any]]:

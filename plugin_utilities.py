@@ -17,12 +17,6 @@
 import os
 from typing import Any, Dict, List
 
-# 3rd Party Libraries
-try:
-    import pandas as pd
-except ModuleNotFoundError:
-    pd = None
-
 
 def get_tools_location():
     """Get the path to the Alteryx Python SDK Tools directory."""
