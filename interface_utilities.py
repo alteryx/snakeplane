@@ -204,9 +204,7 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
         field.set_from_bool(record_creator, bool(value))
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, bytes(value))
-    elif field.type == sdk.FieldType.double:
-        field.set_from_double(record_creator, float(value))
-    elif field.type == sdk.FieldType.float:
+    elif field.type in [sdk.FieldType.double, sdk.FieldType.float]:
         field.set_from_double(record_creator, float(value))
     elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
         field.set_from_int32(record_creator, int(value))
