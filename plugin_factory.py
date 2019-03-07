@@ -122,6 +122,7 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_init(current_plugin, config_xml):
+            current_plugin.update_sys_path()
             current_plugin.save_output_anchor_refs()
 
             # Parse XML and save
@@ -204,6 +205,9 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
+            if len(current_plugin._state_vars.required_input_names) != 0:
+                current_plugin.assert_all_inputs_connected()
+
             if current_plugin.update_only_mode:
                 return True
 
@@ -261,7 +265,6 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
-            current_plugin.assert_all_inputs_connected()
             if current_plugin.all_inputs_completed:
                 func(current_plugin)
 
@@ -287,6 +290,7 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
+            current_plugin.update_sys_path()
             current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
@@ -390,6 +394,8 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_close(current_interface):
             current_plugin = current_interface.parent
+
+            current_plugin.assert_all_inputs_connected()
 
             if current_plugin.update_only_mode:
                 return

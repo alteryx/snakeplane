@@ -16,6 +16,7 @@
 # Built in Libraries
 import copy
 import os
+import sys
 from collections import UserDict
 from functools import partial
 from types import SimpleNamespace
@@ -165,6 +166,13 @@ class AyxPlugin:
                 return False
 
         return True
+
+    def update_sys_path(self):
+        """Update the sys path to include the current tools libs."""
+        # Add lib to sys path
+        tool_path = plugin_utils.get_tool_path(self.tool_name)
+        sys.path.append(tool_path)
+        sys.path.append(os.path.join(tool_path, "Lib", "site-packages"))
 
     def assert_all_inputs_connected(self) -> bool:
         """Raise an error if there are any missing input connections."""
