@@ -133,6 +133,13 @@ class PluginFactory:
             # Call decorated function
             val = func(current_plugin)
 
+            if current_plugin.update_only_mode:
+                if len(current_plugin._state_vars.required_input_names) == 0:
+                    self._init_func(current_plugin)
+                    self._build_metadata(current_plugin)
+                    for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        anchor.push_metadata(current_plugin)
+
             # Boilerplate Side Effects
             current_plugin.initialized = val
 
@@ -210,8 +217,8 @@ class PluginFactory:
 
             err_str = "Missing Incoming Connection(s)"
             logger = logging.getLogger(__name__)
-            logger.error(err_str, stack_info=True)
-            raise AssertionError(err_str)
+            logger.error(err_str)
+            return True
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
 
@@ -258,6 +265,7 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
+            current_plugin.assert_all_inputs_connected()
             if current_plugin.all_inputs_completed:
                 func(current_plugin)
 
@@ -283,6 +291,8 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
+            if not current_plugin.update_only_mode:
+                current_plugin.assert_all_inputs_connected()
             current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
@@ -388,6 +398,7 @@ class PluginFactory:
             current_plugin = current_interface.parent
 
             if current_plugin.update_only_mode:
+                current_plugin.assert_all_inputs_connected()
                 return
 
             current_interface.completed = True
@@ -634,10 +645,10 @@ class PluginFactory:
             elif mode.lower() == "source":
                 self.build_pi_push_all_records(source_pi_push_all_records)
             else:
-                raise ValueError(
-                    """Mode parameter of process_data must be one of
+                err_str = """Mode parameter of process_data must be one of
                     'batch'|'stream'|'source'"""
-                )
+                logger = logging.getLogger(__name__)
+                logger.error(err_str)
 
         return decorator_process_data
 
