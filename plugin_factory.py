@@ -122,6 +122,7 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_init(current_plugin, config_xml):
+            current_plugin.update_sys_path()
             current_plugin.save_output_anchor_refs()
 
             # Parse XML and save
@@ -287,6 +288,7 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
+            current_plugin.update_sys_path()
             current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
