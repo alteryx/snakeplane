@@ -218,7 +218,6 @@ class PluginFactory:
                 func(current_plugin, n_record_limit)
                 return True
 
-
             return True
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
