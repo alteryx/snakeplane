@@ -46,6 +46,7 @@ class AyxPlugin:
         self._engine_vars.n_tool_id = n_tool_id
         self._engine_vars.alteryx_engine = alteryx_engine
         self._engine_vars.output_anchor_mgr = output_anchor_mgr
+        self._missing_inputs_raised = False
 
         # Plugin State vars
         self._state_vars = SimpleNamespace(
@@ -165,6 +166,21 @@ class AyxPlugin:
         for anchor_name in self._state_vars.required_input_names:
             input = self._state_vars.input_anchors[anchor_name]
             if not input or not all([connection.initialized for connection in input]):
+                return False
+
+        return True
+
+    def assert_all_inputs_connected(self) -> bool:
+        """Raise an error if there are any missing input connections."""
+        if self._missing_inputs_raised:
+            return False
+
+        for anchor_name in self._state_vars.required_input_names:
+            input = self._state_vars.input_anchors[anchor_name]
+            if not input:
+                logger = logging.getLogger(__name__)
+                logger.error("Missing Incoming Connection(s).")
+                self._missing_inputs_raised = True
                 return False
 
         return True
