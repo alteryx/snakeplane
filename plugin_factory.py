@@ -14,7 +14,6 @@
 """Implementation of a plugin factory for use in snakeplane framework."""
 
 # Built in Libraries
-import logging
 from functools import wraps
 
 # 3rd Party Libraries
@@ -215,9 +214,6 @@ class PluginFactory:
                 func(current_plugin, n_record_limit)
                 return True
 
-            err_str = "Missing Incoming Connection(s)"
-            logger = logging.getLogger(__name__)
-            logger.error(err_str)
             return True
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
@@ -291,8 +287,6 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
-            if not current_plugin.update_only_mode:
-                current_plugin.assert_all_inputs_connected()
             current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
@@ -398,7 +392,6 @@ class PluginFactory:
             current_plugin = current_interface.parent
 
             if current_plugin.update_only_mode:
-                current_plugin.assert_all_inputs_connected()
                 return
 
             current_interface.completed = True
@@ -647,8 +640,7 @@ class PluginFactory:
             else:
                 err_str = """Mode parameter of process_data must be one of
                     'batch'|'stream'|'source'"""
-                logger = logging.getLogger(__name__)
-                logger.error(err_str)
+                raise ValueError(err_str)
 
         return decorator_process_data
 
