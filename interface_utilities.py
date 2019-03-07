@@ -14,7 +14,6 @@
 """Interface utilities for the snakeplane library."""
 
 # Standard Library
-import logging
 from collections import namedtuple
 from typing import Any, List, Optional, Tuple
 
@@ -35,8 +34,6 @@ def get_dataframe_from_records(record_info, record_list):
     """Convert a list of records into a dataframe."""
     if pd is None:
         err_str = f"Pandas must be installed."
-        logger = logging.getLogger(__name__)
-        logger.error(err_str, stack_info=True)
         raise NotImplementedError(err_str)
 
     col_names = get_column_names_list(record_info)
@@ -51,8 +48,6 @@ def get_dataframe_from_records(record_info, record_list):
     except ImportError:
         err_str = """The Pandas library must be installed to
                     allow dataframe as input_type."""
-        logger = logging.getLogger(__name__)
-        logger.error(err_str)
         raise ImportError(err_str)
 
 
@@ -100,8 +95,6 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         # The type wasn't found, throw an error to let the use know
         err_str = f"""Failed to automatically convert field type "{str(field.type)}"
                     due to unidentified type name."""
-        logger = logging.getLogger(__name__)
-        logger.error(err_str, stack_info=True)
         raise TypeError(err_str)
 
 
@@ -473,8 +466,6 @@ def is_dataframe(input: Any) -> bool:
     except ImportError:
         err_str = """The Pandas library must be installed to
                     allow dataframe as input_type."""
-        logger = logging.getLogger(__name__)
-        logger.error(err_str)
         raise ImportError(err_str)
 
 

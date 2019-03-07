@@ -15,7 +15,6 @@
 
 # Built in Libraries
 import copy
-import logging
 import os
 from collections import UserDict
 from functools import partial
@@ -105,9 +104,6 @@ class AyxPlugin:
         # Custom data
         self.user_data = SimpleNamespace()
 
-        # Set up a custom logger so that errors, warnings and info are sent to designer
-        self.set_logging()
-
         # Configure managers, this must occur last so the instance
         # is properly configured
         self.input_manager = InputManager(self)
@@ -178,56 +174,11 @@ class AyxPlugin:
         for anchor_name in self._state_vars.required_input_names:
             input = self._state_vars.input_anchors[anchor_name]
             if not input:
-                logger = logging.getLogger(__name__)
-                logger.error("Missing Incoming Connection(s).")
+                self.logging.display_error_msg("Missing Incoming Connection(s).")
                 self._missing_inputs_raised = True
                 return False
 
         return True
-
-    def set_logging(self):
-        """Configure a logger so that messages are fowarded to results panel."""
-        plugin = self
-
-        class AyxLogger(logging.Logger):
-            def __init__(self, name, level=logging.NOTSET):
-                self._plugin = plugin
-                super(AyxLogger, self).__init__(name, level)
-
-                # Set the log level for alteryx plugins
-                self.setLevel(level)
-
-            def debug(self, msg, *args, **kwargs):
-                """Debug logger."""
-                self._plugin.logging.display_info_msg(msg)
-                super(AyxLogger, self).debug(msg, *args, **kwargs)
-
-            def info(self, msg, *args, **kwargs):
-                """Info logger."""
-                self._plugin.logging.display_info_msg(msg)
-                super(AyxLogger, self).info(msg, *args, **kwargs)
-
-            def warning(self, msg, *args, **kwargs):
-                """Warning logger."""
-                self._plugin.logging.display_warn_msg(msg)
-                super(AyxLogger, self).warning(msg, *args, **kwargs)
-
-            def error(self, msg, *args, **kwargs):
-                """Error logger."""
-                self._plugin.logging.display_error_msg(msg)
-                super(AyxLogger, self).error(msg, *args, **kwargs)
-
-            def critical(self, msg, *args, **kwargs):
-                """Critical logger."""
-                self._plugin.logging.display_error_msg(msg)
-                super(AyxLogger, self).critical(msg, *args, **kwargs)
-
-            def exception(self, msg, *args, **kwargs):
-                """Exception logger."""
-                self._plugin.logging.display_error_msg(msg)
-                super(AyxLogger, self).exception(msg, *args, **kwargs)
-
-        logging.setLoggerClass(AyxLogger)
 
     def save_output_anchor_refs(self):
         """Save all references to output anchors."""
@@ -347,8 +298,7 @@ class AyxPluginInterface:
             except ImportError:
                 err_str = """The Pandas library must be installed to
                             allow dataframe as input_type."""
-                logger = logging.getLogger(__name__)
-                logger.error(err_str)
+                self.parent.logging.display_error_msg(err_str)
                 raise ImportError(err_str)
 
     @property
