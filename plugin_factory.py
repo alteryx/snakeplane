@@ -133,7 +133,6 @@ class PluginFactory:
             # Call decorated function
             val = func(current_plugin)
 
-
             if current_plugin.update_only_mode:
                 if len(current_plugin._state_vars.required_input_names) == 0:
                     self._init_func(current_plugin)
