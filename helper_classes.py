@@ -168,7 +168,7 @@ class AyxPlugin:
         return True
 
     def update_sys_path(self):
-        """Updates the sys path to include the current tools libs."""
+        """Update the sys path to include the current tools libs."""
         # Add lib to sys path
         tool_path = plugin_utils.get_tool_path(self.tool_name)
         sys.path.append(tool_path)
