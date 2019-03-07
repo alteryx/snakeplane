@@ -214,8 +214,6 @@ class PluginFactory:
                 func(current_plugin, n_record_limit)
                 return True
 
-            err_str = "Missing Incoming Connection(s)"
-            current_plugin.logging.display_error_msg(err_str)
             return True
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
@@ -289,8 +287,6 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
-            if not current_plugin.update_only_mode:
-                current_plugin.assert_all_inputs_connected()
             current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
@@ -396,7 +392,6 @@ class PluginFactory:
             current_plugin = current_interface.parent
 
             if current_plugin.update_only_mode:
-                current_plugin.assert_all_inputs_connected()
                 return
 
             current_interface.completed = True
