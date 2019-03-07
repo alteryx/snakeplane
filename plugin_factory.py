@@ -266,6 +266,7 @@ class PluginFactory:
 
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
+            current_plugin.assert_all_inputs_connected()
             if current_plugin.all_inputs_completed:
                 func(current_plugin)
 
@@ -291,6 +292,8 @@ class PluginFactory:
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
+            if not current_plugin.update_only_mode:
+                current_plugin.assert_all_inputs_connected()
             current_interface._interface_record_vars.record_info_in = record_info_in
             current_interface.initialized = True
 
@@ -396,6 +399,7 @@ class PluginFactory:
             current_plugin = current_interface.parent
 
             if current_plugin.update_only_mode:
+                current_plugin.assert_all_inputs_connected()
                 return
 
             current_interface.completed = True
