@@ -16,6 +16,14 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+## Setup
+
+Snakeplane is designed to be used with the Alteryx Python SDK in Alteryx Designer v2018.4+.
+
+## Issues
+
+Any issues found should be reported as GitHub issues on this repository.
+
 ## Overview
 
 Snakeplane uses a framework similar to Flask. The user uses a ```PluginFactory``` class to build their plugin and through interfaces to the factory and can specify their choice of options and custom functionality.
