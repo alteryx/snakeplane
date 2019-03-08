@@ -120,6 +120,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("pi_init")
         @wraps(func)
         def wrap_pi_init(current_plugin, config_xml):
             current_plugin.update_sys_path()
@@ -164,6 +165,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("pi_add_incoming_connection")
         @wraps(func)
         def wrap_pi_add_incoming_connection(
             current_plugin: object, str_type: str, str_name: str
@@ -203,6 +205,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("push_all_records")
         @wraps(func)
         def wrap_push_all_records(current_plugin, n_record_limit: int):
             if len(current_plugin._state_vars.required_input_names) != 0:
@@ -239,6 +242,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("pi_add_outgoing_connection")
         @wraps(func)
         def wrap_pi_add_outgoing_connection(current_plugin, str_name):
             return func(current_plugin, str_name)
@@ -263,6 +267,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("pi_close")
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
             if current_plugin.all_inputs_completed:
@@ -287,6 +292,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("ii_init")
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
             current_plugin = current_interface.parent
@@ -334,6 +340,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("ii_push_record")
         @wraps(func)
         def wrap_ii_push_record(current_interface, in_record):
             current_plugin = current_interface.parent
@@ -362,9 +369,12 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("ii_update_progress")
         @wraps(func)
         def wrap_ii_update_progress(current_interface, d_percentage):
             current_plugin = current_interface.parent
+            if current_plugin.update_only_mode:
+                return
 
             current_plugin.update_progress(d_percentage)
 
@@ -391,6 +401,7 @@ class PluginFactory:
         This method produces side-effects by registering the user defined function
         """
 
+        @_monitor("ii_close")
         @wraps(func)
         def wrap_ii_close(current_interface):
             current_plugin = current_interface.parent
@@ -733,3 +744,37 @@ def _apply_parameter_requests(func):
             return func(**passed_params)
 
     return wrapped
+
+
+def _monitor(name):
+    def _monitor_decorator(func):
+        import time
+        from pathlib import Path
+        import pandas as pd
+        import pdb
+
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            # start_time = time.time()
+            val = func(*args, **kwargs)
+            # end_time = time.time()
+            # time_diff_ms = (end_time - start_time) * 1000
+
+            # # Write to a file
+            # file_name = Path("C:/devspace/debug.csv")
+
+            # if not file_name.is_file():
+            #     data = {"Func": [name], "Time": [time_diff_ms]}
+            #     df = pd.DataFrame(data)
+            # else:
+            #     data = {"Func": [name], "Time": [time_diff_ms]}
+            #     df_new = pd.DataFrame(data)
+            #     df_old = pd.read_csv(file_name)
+            #     df = pd.concat([df_old, df_new])
+
+            # df.to_csv(file_name, index=False)
+            return val
+
+        return wrapped
+
+    return _monitor_decorator
