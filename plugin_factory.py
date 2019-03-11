@@ -22,6 +22,8 @@ from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
 import xmltodict
 
+DEBUG = False
+
 
 class PluginFactory:
     """
@@ -134,12 +136,14 @@ class PluginFactory:
             # Call decorated function
             val = func(current_plugin)
 
-            if current_plugin.update_only_mode:
-                if len(current_plugin._state_vars.required_input_names) == 0:
-                    self._init_func(current_plugin)
-                    self._build_metadata(current_plugin)
-                    for _, anchor in current_plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(current_plugin)
+            if (
+                current_plugin.update_only_mode
+                and len(current_plugin._state_vars.required_input_names) == 0
+            ):
+                self._init_func(current_plugin)
+                self._build_metadata(current_plugin)
+                for _, anchor in current_plugin._state_vars.output_anchors.items():
+                    anchor.push_metadata(current_plugin)
 
             # Boilerplate Side Effects
             current_plugin.initialized = val
@@ -748,32 +752,34 @@ def _apply_parameter_requests(func):
 
 def _monitor(name):
     def _monitor_decorator(func):
-        # import time
-        # from pathlib import Path
-        # import pandas as pd
-        # import pdb
-
         @wraps(func)
         def wrapped(*args, **kwargs):
-            # start_time = time.time()
-            val = func(*args, **kwargs)
-            # end_time = time.time()
-            # time_diff_ms = (end_time - start_time) * 1000
+            if DEBUG:
+                import time
+                from pathlib import Path
+                import pandas as pd
 
-            # # Write to a file
-            # file_name = Path("C:/devspace/debug.csv")
+                start_time = time.time()
+                val = func(*args, **kwargs)
+                end_time = time.time()
+                time_diff_ms = (end_time - start_time) * 1000
 
-            # if not file_name.is_file():
-            #     data = {"Func": [name], "Time": [time_diff_ms]}
-            #     df = pd.DataFrame(data)
-            # else:
-            #     data = {"Func": [name], "Time": [time_diff_ms]}
-            #     df_new = pd.DataFrame(data)
-            #     df_old = pd.read_csv(file_name)
-            #     df = pd.concat([df_old, df_new])
+                # Write to a file
+                file_name = Path("C:/debug.csv")
 
-            # df.to_csv(file_name, index=False)
-            return val
+                if not file_name.is_file():
+                    data = {"Func": [name], "Time": [time_diff_ms]}
+                    df = pd.DataFrame(data)
+                else:
+                    data = {"Func": [name], "Time": [time_diff_ms]}
+                    df_new = pd.DataFrame(data)
+                    df_old = pd.read_csv(file_name)
+                    df = pd.concat([df_old, df_new])
+
+                df.to_csv(file_name, index=False)
+                return val
+            else:
+                return func(*args, **kwargs)
 
         return wrapped
 
