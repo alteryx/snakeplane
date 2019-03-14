@@ -6,9 +6,9 @@ run-linting:
   stage: code_quality
   script:
     - python3 -m pip install -r requirements.txt
-    - flake8 --ignore N803,N806,N813,W503,E501 .
-    - black --check . # Only check the files with black
-    - pydocstyle --convention=numpy --add-ignore=D202 .
+    - flake8 --ignore N803,N806,N813,W503,E501 snakeplane
+    - black --check snakeplane # Only check the files with black
+    - pydocstyle --convention=numpy --add-ignore=D202 snakeplane
 
   only:
     - pushes

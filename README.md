@@ -20,6 +20,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Snakeplane is designed to be used with the Alteryx Python SDK in Alteryx Designer v2018.4+.
 
+For examples on how to develop tools/leverage a built in build system, please see the **pilot** directory.
+
 ## Issues
 
 Any issues found should be reported as GitHub issues on this repository.

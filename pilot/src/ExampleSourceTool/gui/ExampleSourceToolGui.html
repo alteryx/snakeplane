@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html style="padding:20px">
+
+<head>
+	<meta charset="utf-8">
+	<title>Python - Drews Test</title>
+
+	<!-- Includes the GUI library, which gives you access to the interface elements used in Designer -->
+	<script type="text/javascript">
+		document.write('<link rel="import" href="' + window.Alteryx.LibDir + '2/lib/includes.html">');
+	</script>
+
+</head>
+
+<style>
+	.configItem {
+			margin-bottom: 14px;
+		}
+</style>
+
+<body>
+	<h2>Example Source Tool</h2>
+
+	<div class="configItem">
+		<label>XMSG("Value:")</label>
+		<ayx data-ui-props='{type: "NumericSpinner", widgetId:"AppendValNum"}'>
+		</ayx>
+	</div>
+
+	<script type="text/javascript">
+		Alteryx.Gui.BeforeLoad = function (manager, AlteryxDataItems, json) {
+			var alphaFloatSelector = new AlteryxDataItems.ConstrainedFloat('Value')
+			alphaFloatSelector.setMin(0)
+			alphaFloatSelector.setMax(1)
+			alphaFloatSelector.setStep(0.01)
+
+			// Add and bind the data items to the selector widgets
+			manager.addDataItem(alphaFloatSelector)
+			manager.bindDataItemToWidget(alphaFloatSelector, 'AppendValNum') // Bind to widget
+		}
+	</script>
+
+</body>
+
+</html>

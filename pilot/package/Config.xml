@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<AlteryxJavaScriptPlugin>
+  <Properties>
+    <MetaInfo>
+      <Name>Space C Tool</Name>
+      <RootToolName>ml_tools</RootToolName>
+      <Description>spaCy integration with alteryx</Description>
+      <CategoryName>ML Tools</CategoryName>
+      <ToolVersion>1.0.0</ToolVersion>
+      <Author>Ashton Walden</Author>
+      <Company>Alteryx, Inc.</Company>
+      <Copyright>2018</Copyright>
+      <SearchTags>scikit-learn, python, predictive, nlp, language, space</SearchTags>
+      <Icon>icon.png</Icon>
+    </MetaInfo>
+  </Properties>
+</AlteryxJavaScriptPlugin>
