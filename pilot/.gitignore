@@ -1,0 +1,12 @@
+.vscode
+.ipynb_checkpoints
+*.ipynb
+*.zip
+*.pyc
+package/*
+!package/Config.*
+!package/icon.png
+
+env/**
+!env/requirements.txt
+!env/setup_environ.bat

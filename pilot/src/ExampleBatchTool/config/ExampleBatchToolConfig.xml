@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<AlteryxJavaScriptPlugin>
+  <EngineSettings EngineDll="Python" EngineDllEntryPoint="main.py" SDKVersion="10.1" />
+  <GuiSettings Html="gui/ExampleBatchToolGui.html" Icon="ExampleBatchToolIcon.png" SDKVersion="10.1">
+    <InputConnections>
+    <Connection Name="Input" AllowMultiple="False" Optional="False" Type="Connection" Label=""/>
+    </InputConnections>
+    <OutputConnections>
+      <Connection Name="Output" AllowMultiple="False" Optional="False" Type="Connection" Label=""/>
+    </OutputConnections>
+  </GuiSettings>
+  <Properties>
+    <MetaInfo>
+      <Name>ExampleBatchTool</Name>
+      <Description>Example Batch Tool</Description>
+      <ToolVersion>1.0</ToolVersion>
+      <CategoryName>SDK Examples</CategoryName>
+      <SearchTags>python, sdk, select, sample, top, records, python sdk</SearchTags>
+      <Author>Alteryx</Author>
+      <Company>Alteryx, Inc.</Company>
+      <Copyright>2017</Copyright>
+    </MetaInfo>
+  </Properties>
+</AlteryxJavaScriptPlugin>
