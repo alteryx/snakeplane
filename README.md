@@ -2,7 +2,9 @@
 
 ## The Alteryx Python SDK Abstraction Layer
 
-![alt text](./Snakeplane.jpg)
+<p>
+    <img src="Snakeplane.jpg" width="800" height="400" />
+</p>
 
 Snakeplane is a toolkit to make building Python SDK tools for Alteryx simple, fun, and smooth. Snakeplane provides a way to perform rapid development of Alteryx tools, while maintaining quality. The abstraction provides lots of built functionality such as error checking on required input connections, record generation and pushing, etc.
 
