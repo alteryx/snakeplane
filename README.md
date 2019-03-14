@@ -2,7 +2,7 @@
 
 ## The Alteryx Python SDK Abstraction Layer
 
-![alt text](./funny-snakes-on-a-plane-5.png)
+![alt text](./Snakeplane.jpg)
 
 Snakeplane is a toolkit to make building Python SDK tools for Alteryx simple, fun, and smooth. Snakeplane provides a way to perform rapid development of Alteryx tools, while maintaining quality. The abstraction provides lots of built functionality such as error checking on required input connections, record generation and pushing, etc.
 
@@ -26,15 +26,15 @@ Any issues found should be reported as GitHub issues on this repository.
 
 ## Overview
 
-Snakeplane uses a framework similar to Flask. The user uses a ```PluginFactory``` class to build their plugin and through interfaces to the factory and can specify their choice of options and custom functionality.
+Snakeplane uses a framework similar to Flask. The user uses a `PluginFactory` class to build their plugin and through interfaces to the factory and can specify their choice of options and custom functionality.
 
 There are three functions that a developer must define when using snakeplane.
 
-1. ```initialize_plugin```: This function defines behavior that happens a single time at the initialization of the tool. This area is typically used to validate settings from the GUI, and do any required variable initialization.
+1. `initialize_plugin`: This function defines behavior that happens a single time at the initialization of the tool. This area is typically used to validate settings from the GUI, and do any required variable initialization.
 
-2. ```process_data```: This function defines the behvior used to generate output records from inputs (when present).
+2. `process_data`: This function defines the behvior used to generate output records from inputs (when present).
 
-3. ```build_metadata```: One of the things that makes the Alteryx Designer Platform so powerful is the propagation of metadata at configuration time. As a result, tool developers must specify the schema for the output data in a separate location that can be used at configuration time in Designer to propagate this metadata to downstream tools.
+3. `build_metadata`: One of the things that makes the Alteryx Designer Platform so powerful is the propagation of metadata at configuration time. As a result, tool developers must specify the schema for the output data in a separate location that can be used at configuration time in Designer to propagate this metadata to downstream tools.
 
 Following is an example tool that implements these three functions.
 
@@ -137,85 +137,85 @@ AyxPlugin = factory.generate_plugin()
 
 ## PluginFactory
 
-The plugin factory constructor takes the tool name as a single argument. __This name must match the directory name of the tool when installed in Alteryx.__ This is because the plugin factory interally uses this name to find the configuration XML file for the plugin, and therefore needs the path to the tool.
+The plugin factory constructor takes the tool name as a single argument. **This name must match the directory name of the tool when installed in Alteryx.** This is because the plugin factory interally uses this name to find the configuration XML file for the plugin, and therefore needs the path to the tool.
 
 When using the abstraction layer, the first thing to do is to construct a new plugin factory:
 
-```factory = PluginFactory("ExampleTool")```
+`factory = PluginFactory("ExampleTool")`
 
 Once you have completed specification of custom functionality (described below), you must export your plugin:
 
-```AyxPlugin = factory.generate_plugin()```
+`AyxPlugin = factory.generate_plugin()`
 
-__The name ```AyxPlugin``` must match exactly.__ The Python SDK expects to find a class named AyxPlugin in order to generate your plugin at run time.
+**The name `AyxPlugin` must match exactly.** The Python SDK expects to find a class named AyxPlugin in order to generate your plugin at run time.
 
 ## Initialize Plugin
 
-You can specify plugin initialization behavior by creating a function with the specified signature and decorating it with ```@factory.initialize_plugin``` (For a helpful guide on Python decorators see [here](https://realpython.com/primer-on-python-decorators/)). This registers your initialization function with the plugin factory to ensure it is called at the appropriate time.
+You can specify plugin initialization behavior by creating a function with the specified signature and decorating it with `@factory.initialize_plugin` (For a helpful guide on Python decorators see [here](https://realpython.com/primer-on-python-decorators/)). This registers your initialization function with the plugin factory to ensure it is called at the appropriate time.
 
 ## Process Data
 
-```process_data``` is the place for the plugin designer to put the bulk of the plugin functionality. Similarly to ```initialize_plugin```, the way a user can register their own ```process_data``` function is by using the ```@factory.process_data``` decorator. The difference in this case, is that this decorator takes the following parameters:
+`process_data` is the place for the plugin designer to put the bulk of the plugin functionality. Similarly to `initialize_plugin`, the way a user can register their own `process_data` function is by using the `@factory.process_data` decorator. The difference in this case, is that this decorator takes the following parameters:
 
-- ```mode```: Registers what mode the designer wants the plugin to operate in. This options for this variable are:
+- `mode`: Registers what mode the designer wants the plugin to operate in. This options for this variable are:
 
-  - ```"batch"``` : In this mode, the plugin will aggregate input records from all input anchors, and then call the ```process_data``` function.
-  - ```"stream"``` : In this mode, the plugin will call ```process_data``` every time that a record is received from any input interface. Input data will be a list representing a single row, with a value for each respective column.
+  - `"batch"` : In this mode, the plugin will aggregate input records from all input anchors, and then call the `process_data` function.
+  - `"stream"` : In this mode, the plugin will call `process_data` every time that a record is received from any input interface. Input data will be a list representing a single row, with a value for each respective column.
 
-- ```input_type``` (Optional) : Tells the plugin what data type the user would like on the input. The options are:
+- `input_type` (Optional) : Tells the plugin what data type the user would like on the input. The options are:
 
-  - ```"list"``` (Default) : The input data is a list of lists (for batch) or a single list (for stream), where each row is a record and each column is a field in the record.
-  - ```"dataframe"```: The input data is a pandas dataframe
+  - `"list"` (Default) : The input data is a list of lists (for batch) or a single list (for stream), where each row is a record and each column is a field in the record.
+  - `"dataframe"`: The input data is a pandas dataframe
 
 ## Build Metadata
 
-```build_metadata``` is where you can specify the output metadata for your tool. It is done using a combination of the input/output managers and the ```AnchorMetadata``` object
+`build_metadata` is where you can specify the output metadata for your tool. It is done using a combination of the input/output managers and the `AnchorMetadata` object
 
 ## Function inputs
 
-The ```initialize_plugin```,```process_data```, and ```build_metadata``` functions may accept any combination of the following inputs:
+The `initialize_plugin`,`process_data`, and `build_metadata` functions may accept any combination of the following inputs:
 
 ### input_mgr
 
-The ```input_mgr``` is an object through which the user can access data & metadata from the plugin input anchors. It can be treated as a Python dictionary for the purpose of retrieving input anchors, i.e. with an input anchor name of ```example```, one can get the ```example``` anchor by calling ```input_mgr["example"]```. The return value of this is a list of ```InputAnchors```, described below.
+The `input_mgr` is an object through which the user can access data & metadata from the plugin input anchors. It can be treated as a Python dictionary for the purpose of retrieving input anchors, i.e. with an input anchor name of `example`, one can get the `example` anchor by calling `input_mgr["example"]`. The return value of this is a list of `InputAnchors`, described below.
 
-The ```input_mgr``` also has several other helpful properties:
+The `input_mgr` also has several other helpful properties:
 
-1. ```tool_id -> int```: The tool ID of the current tool.
+1. `tool_id -> int`: The tool ID of the current tool.
 
-2. ```workflow_config -> OrderedDict```: The configuration of Alteryx data items registered through the GUI SDK.
+2. `workflow_config -> OrderedDict`: The configuration of Alteryx data items registered through the GUI SDK.
 
 ### output_mgr
 
-The ```output_mgr``` is similar to the ```input_mgr```, except that it only can access output anchors. It has the same interface as ```input_mgr``` in terms of dictionary-like access to anchors, except that the return value is only a single ```OutputAnchor``` object instead of a list of ```InputAnchor```.
+The `output_mgr` is similar to the `input_mgr`, except that it only can access output anchors. It has the same interface as `input_mgr` in terms of dictionary-like access to anchors, except that the return value is only a single `OutputAnchor` object instead of a list of `InputAnchor`.
 
-The ```output_mgr``` also has several helpful properties/methods:
+The `output_mgr` also has several helpful properties/methods:
 
-1. ```get_temp_file_path()```: Method that creates a temporary file that only exists for the lifetime of a running workflow. Returns the path to the file.
+1. `get_temp_file_path()`: Method that creates a temporary file that only exists for the lifetime of a running workflow. Returns the path to the file.
 
-2. ```create_anchor_metadata()```: Method that creates a new anchor metadata object. Details below.
+2. `create_anchor_metadata()`: Method that creates a new anchor metadata object. Details below.
 
 ### user_data
 
-```user_data``` is a ```SimpleNamespace``` that can be used by the plugin designer to save any data that they wish to persist between calls to ```initialize_plugin```, ```build_metadata``` and consecutive calls to ```process_data```.
+`user_data` is a `SimpleNamespace` that can be used by the plugin designer to save any data that they wish to persist between calls to `initialize_plugin`, `build_metadata` and consecutive calls to `process_data`.
 
 ### logger
 
-The ```logger``` is an object containing methods for logging errors, warnings, and information to the Alteryx Designer canvas.
+The `logger` is an object containing methods for logging errors, warnings, and information to the Alteryx Designer canvas.
 
 It contains the following methods:
 
-1. ```display_info_msg(msg: str)```: Prints an info message to Alteryx designer.
+1. `display_info_msg(msg: str)`: Prints an info message to Alteryx designer.
 
-2. ```display_warn_msg(msg: str)```: Prints a warning message to Alteryx designer.
+2. `display_warn_msg(msg: str)`: Prints a warning message to Alteryx designer.
 
-3. ```display_error_msg(msg: str)```: Prints an error message to Alteryx designer.
+3. `display_error_msg(msg: str)`: Prints an error message to Alteryx designer.
 
 ### workflow_config
 
-```workflow_config``` is an ```OrderedDict``` containing the settings specified by the user from the HTML GUI. This typically will contain setting information that you want to use in ```process_data```.
+`workflow_config` is an `OrderedDict` containing the settings specified by the user from the HTML GUI. This typically will contain setting information that you want to use in `process_data`.
 
-```user_data``` is a Python ```SimpleNamespace``` object that is dedicated for the plugin developer to store any desired information in. This data is persistent between the ```initialize_plugin``` call and the ```process_data``` call, as well as between calls to ```process_data``` when operating in stream mode.
+`user_data` is a Python `SimpleNamespace` object that is dedicated for the plugin developer to store any desired information in. This data is persistent between the `initialize_plugin` call and the `process_data` call, as well as between calls to `process_data` when operating in stream mode.
 
 ## Class Descriptions:
 
@@ -225,9 +225,9 @@ Used to retrieve data and metadata for a given input anchor.
 
 Properties:
 
-1. ```data -> [List[List[Any]] or pandas.DataFrame]```: Contains the record data on the anchor. Is either a list of lists of a pandas dataframe depending on the ```input_type``` setting of process data. This data is read only since a downstream tool cannot affect its incoming data.
+1. `data -> [List[List[Any]] or pandas.DataFrame]`: Contains the record data on the anchor. Is either a list of lists of a pandas dataframe depending on the `input_type` setting of process data. This data is read only since a downstream tool cannot affect its incoming data.
 
-2. ```metadata -> AnchorMetadata```: Contains the anchor metadata for this anchor. This metadata is read only since a downstream tool cannot affect its incoming metadata.
+2. `metadata -> AnchorMetadata`: Contains the anchor metadata for this anchor. This metadata is read only since a downstream tool cannot affect its incoming metadata.
 
 ### OutputAnchor
 
@@ -235,50 +235,50 @@ Used to retrieve and set data and metadata for a given output anchor.
 
 Properties:
 
-1. ```data -> [List[List[Any]] or pandas.DataFrame]```: Contains the record data on the anchor. Can be a list of lists of a pandas dataframe. This tool can set the data for the output anchor in the ```process_data``` function.
+1. `data -> [List[List[Any]] or pandas.DataFrame]`: Contains the record data on the anchor. Can be a list of lists of a pandas dataframe. This tool can set the data for the output anchor in the `process_data` function.
 
-2. ```metadata -> AnchorMetadata```: Contains the anchor metadata for this anchor. This metadata is read only since a downstream tool cannot affect its incoming metadata.
+2. `metadata -> AnchorMetadata`: Contains the anchor metadata for this anchor. This metadata is read only since a downstream tool cannot affect its incoming metadata.
 
 ### AnchorMetadata
 
-The ```AnchorMetadata``` class contains all the metadata for a given input/output anchor and contains helper methods for inspecting/creating those settings.
+The `AnchorMetadata` class contains all the metadata for a given input/output anchor and contains helper methods for inspecting/creating those settings.
 
-To create a new ```AnchorMetadata``` object, you can use the ```create_anchor_metadata``` method of the ```output_mgr```.
+To create a new `AnchorMetadata` object, you can use the `create_anchor_metadata` method of the `output_mgr`.
 
 Properties:
 
-1. ```columns -> List[ColumnMetadata]```: Contains the list of ```ColumnMetadata``` objects.
+1. `columns -> List[ColumnMetadata]`: Contains the list of `ColumnMetadata` objects.
 
 Methods:
 
-1. ```add_column(name: str, col_type: AlteryxSdk.FieldType, size: Optional(int), scale: Optional(int), source: Optional(str), description: Optional(str)) -> None```: A method for adding a new column to the AnchorMetadata. The only two required inputs are the column name and column type. The name may be any string that is unique from other column names, and the type must be one of the supported Alteryx SDK FieldTypes, described below under __Alteryx SDK Field Types__.
+1. `add_column(name: str, col_type: AlteryxSdk.FieldType, size: Optional(int), scale: Optional(int), source: Optional(str), description: Optional(str)) -> None`: A method for adding a new column to the AnchorMetadata. The only two required inputs are the column name and column type. The name may be any string that is unique from other column names, and the type must be one of the supported Alteryx SDK FieldTypes, described below under **Alteryx SDK Field Types**.
 
-2. ```index_of(name: str) -> int```: Gets the column index of the column name specified. Returns ```None``` if the column does not exist.
+2. `index_of(name: str) -> int`: Gets the column index of the column name specified. Returns `None` if the column does not exist.
 
-3. ```get_column_by_name(name: str) -> ColumnMetadata```: Gets the ```ColumnMetadata``` object for a given column name.
+3. `get_column_by_name(name: str) -> ColumnMetadata`: Gets the `ColumnMetadata` object for a given column name.
 
-4. ```get_column_names() -> List[str]```: Gets a list of the available column names.
+4. `get_column_names() -> List[str]`: Gets a list of the available column names.
 
 ### ColumnMetadata
 
-The ```ColumnMetadata``` class contains all of the metadata for a single column of data. Each object has the following properties:
+The `ColumnMetadata` class contains all of the metadata for a single column of data. Each object has the following properties:
 
-1. ```name -> str```: (Required) Name of the column.
+1. `name -> str`: (Required) Name of the column.
 
-2. ```type -> Sdk.FieldType```: (Required) Type of the column.
+2. `type -> Sdk.FieldType`: (Required) Type of the column.
 
-3. ```size -> int```: (Optional) Number of characters for strings, or size in bytes for blob and spatial types. Ignored for primitive types.
+3. `size -> int`: (Optional) Number of characters for strings, or size in bytes for blob and spatial types. Ignored for primitive types.
 
-4. ```scale -> int```: (Optional) Scaling factor for fixed decimal types. Ignored for other data.
+4. `scale -> int`: (Optional) Scaling factor for fixed decimal types. Ignored for other data.
 
-5. ```source -> str```: (Optional) Source of the data.
+5. `source -> str`: (Optional) Source of the data.
 
-6. ```description -> str```: (Optional) Description of the column.
+6. `description -> str`: (Optional) Description of the column.
 
 The descriptions for these properties can also be found [here](https://help.alteryx.com/developer/current/Python/use/RecordInfoClass.htm?tocpath=SDKs%7CBuild%20Custom%20Tools%7CPython%20SDK%7CClasses%7CRecordInfo%7C_____0#add_fiel).
 
 ## Alteryx SDK Field Types
 
-All Alteryx FieldTypes must be referenced using the ```AlteryxPythonSDK``` dependency. These can be found as properties of ```AlteryxPythonSDK.FieldType```. The following types are supported as properties of this object: ```boolean,byte, int16, int32, int64, fixeddecimal, float, double, string, wstring, v string, v_wstring, date, time, datetime, and blob```. NOTE: spatial objects are not supported at this point.
+All Alteryx FieldTypes must be referenced using the `AlteryxPythonSDK` dependency. These can be found as properties of `AlteryxPythonSDK.FieldType`. The following types are supported as properties of this object: `boolean,byte, int16, int32, int64, fixeddecimal, float, double, string, wstring, v string, v_wstring, date, time, datetime, and blob`. NOTE: spatial objects are not supported at this point.
 
 Descriptions of these field types can be found [here](https://help.alteryx.com/developer/current/Python/use/FieldClass.htm?tocpath=SDKs%7CBuild%20Custom%20Tools%7CPython%20SDK%7CClasses%7C_____3) and [here](https://help.alteryx.com/current/Reference/DataFieldType.htm).
