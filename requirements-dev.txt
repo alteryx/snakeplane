@@ -1,0 +1,9 @@
+black==18.9b0
+flake8==3.7.5
+flake8-import-order==0.18
+pep8==1.7.1
+pep8-naming==0.8.2
+pydocstyle==3.0.0
+recommonmark==0.5.0
+sphinx==1.8.4
+sphinxcontrib-websupport==1.1.0
