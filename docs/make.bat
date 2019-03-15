@@ -43,17 +43,13 @@ if "%1" == "" (
 
 :html
 :latex
-    xcopy source _build\source /s /i /y
-    plantuml -tpng -o . ./_build/source/*.puml
-    sphinx-apidoc -f -o _build/source ../%PROJECT_DIR%
-    sphinx-build -b %1 -c . _build/source _build/%1
+    sphinx-apidoc -f -o source ../%PROJECT_DIR%
+    sphinx-build -b %1 -c source source _build/%1
     goto end
 
 :pdf
-    xcopy source _build\source /s /i /y
-    plantuml.jar -tpng -o . ./_build/source/*.puml
-    sphinx-apidoc -f -o _build/source ../%PROJECT_DIR%
-    sphinx-build -b latex -c . _build/source _build/latex
+    sphinx-apidoc -f -o source ../%PROJECT_DIR%
+    sphinx-build -b latex -c source source _build/latex
     pdflatex -output-directory=_build\pdf -include-directory=_build\latex _build\latex\%PROJECT_NAME%.tex
     goto end
 
