@@ -1,4 +1,4 @@
-# Alteryx snakeplane Source Code Documentation
+# Alteryx SnakePlane Source Code Documentation
 This page describes how to build the source code documentation for the `snakeplane` package using [Sphinx](http://www.sphinx-doc.org/en/master/).
 
 ## Installation
