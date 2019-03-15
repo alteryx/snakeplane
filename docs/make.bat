@@ -44,12 +44,12 @@ if "%1" == "" (
 :html
 :latex
     sphinx-apidoc -f -o source ../%PROJECT_DIR%
-    sphinx-build -b %1 -c . source _build/%1
+    sphinx-build -b %1 -c source source _build/%1
     goto end
 
 :pdf
     sphinx-apidoc -f -o source ../%PROJECT_DIR%
-    sphinx-build -b latex -c . source _build/latex
+    sphinx-build -b latex -c source source _build/latex
     pdflatex -output-directory=_build\pdf -include-directory=_build\latex _build\latex\%PROJECT_NAME%.tex
     goto end
 
