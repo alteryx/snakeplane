@@ -21,8 +21,8 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = "snakeplane"
-title = "Snakeplane Documentation"
-description = "Alteryx Snakeplane Python package"
+title = "SnakePlane Documentation"
+description = "Alteryx SnakePlane Python package"
 copyright = "2019, Alteryx, Inc."
 author = "Alteryx, Inc."
 
