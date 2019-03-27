@@ -17,6 +17,8 @@
 from functools import wraps
 
 # 3rd Party Libraries
+import AlteryxPythonSDK as sdk
+
 import snakeplane.interface_utilities as interface_utils
 from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
@@ -50,7 +52,7 @@ class PluginFactory:
         of the PluginFactory's methods (either directly or via decorators).
     """
 
-    def __init__(self, tool_name: str):
+    def __init__(self, tool_name: str) -> None:
         """
         Initialize a PluginFactory object.
 
@@ -140,10 +142,11 @@ class PluginFactory:
                 current_plugin.update_only_mode
                 and len(current_plugin._state_vars.required_input_names) == 0
             ):
-                self._init_func(current_plugin)
-                self._build_metadata(current_plugin)
-                for _, anchor in current_plugin._state_vars.output_anchors.items():
-                    anchor.push_metadata(current_plugin)
+                val = self._init_func(current_plugin)
+                if val:
+                    self._build_metadata(current_plugin)
+                    for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        anchor.push_metadata(current_plugin)
 
             # Boilerplate Side Effects
             current_plugin.initialized = val
@@ -211,7 +214,7 @@ class PluginFactory:
 
         @_monitor("push_all_records")
         @wraps(func)
-        def wrap_push_all_records(current_plugin, n_record_limit: int):
+        def wrap_push_all_records(current_plugin: object, n_record_limit: int):
             if len(current_plugin._state_vars.required_input_names) != 0:
                 current_plugin.assert_all_inputs_connected()
 
@@ -248,7 +251,7 @@ class PluginFactory:
 
         @_monitor("pi_add_outgoing_connection")
         @wraps(func)
-        def wrap_pi_add_outgoing_connection(current_plugin, str_name):
+        def wrap_pi_add_outgoing_connection(current_plugin: object, str_name: str):
             return func(current_plugin, str_name)
 
         setattr(
@@ -319,10 +322,11 @@ class PluginFactory:
                 current_plugin.update_only_mode
                 and current_plugin.all_required_inputs_initialized
             ):
-                self._init_func(current_plugin)
-                self._build_metadata(current_plugin)
-                for _, anchor in current_plugin._state_vars.output_anchors.items():
-                    anchor.push_metadata(current_plugin)
+                ret_val = self._init_func(current_plugin)
+                if ret_val:
+                    self._build_metadata(current_plugin)
+                    for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        anchor.push_metadata(current_plugin)
 
             return True
 
@@ -346,7 +350,7 @@ class PluginFactory:
 
         @_monitor("ii_push_record")
         @wraps(func)
-        def wrap_ii_push_record(current_interface, in_record):
+        def wrap_ii_push_record(current_interface: object, in_record: sdk.RecordRef):
             current_plugin = current_interface.parent
 
             if not current_plugin.initialized or current_plugin.update_only_mode:
@@ -375,7 +379,7 @@ class PluginFactory:
 
         @_monitor("ii_update_progress")
         @wraps(func)
-        def wrap_ii_update_progress(current_interface, d_percentage):
+        def wrap_ii_update_progress(current_interface: object, d_percentage: float):
             current_plugin = current_interface.parent
             if current_plugin.update_only_mode:
                 return
@@ -407,7 +411,7 @@ class PluginFactory:
 
         @_monitor("ii_close")
         @wraps(func)
-        def wrap_ii_close(current_interface):
+        def wrap_ii_close(current_interface: object):
             current_plugin = current_interface.parent
 
             current_plugin.assert_all_inputs_connected()
@@ -421,7 +425,7 @@ class PluginFactory:
 
         setattr(self._plugin.plugin_interface, "ii_close", wrap_ii_close)
 
-    def initialize_plugin(self, func):
+    def initialize_plugin(self, func: object):
         """
         Decorate a user defined function to inject custom intialization.
 
@@ -473,16 +477,16 @@ class PluginFactory:
         """
 
         @wraps(func)
-        def wrap_init(current_plugin):
+        def wrap_init(current_plugin: object):
             current_plugin.initialized = _apply_parameter_requests(func)(current_plugin)
             return current_plugin.initialized
 
         self._init_func = wrap_init
 
-    def build_metadata(self, func):
+    def build_metadata(self, func: object):
         """Decorate a function to inject user defined build metadata function."""
 
-        def decorated_build_metadata(plugin):
+        def decorated_build_metadata(plugin: object):
             return _apply_parameter_requests(func)(plugin)
 
         self._build_metadata = decorated_build_metadata
@@ -605,13 +609,13 @@ class PluginFactory:
         setattr(self._plugin, "process_data_input_type", input_type)
         setattr(self._plugin, "process_data_mode", mode)
 
-        def decorator_process_data(func):
+        def decorator_process_data(func: object):
             # Decorate user function to push all records and metadata
             func = _apply_parameter_requests(func)
             func = _push_all_metadata_and_records(func)
 
             @_run_only_if_pi_initialized
-            def batch_ii_close(plugin):
+            def batch_ii_close(plugin: object):
                 if plugin.all_inputs_completed:
                     # Run initialization here
                     if not self._init_func(plugin):
@@ -624,7 +628,9 @@ class PluginFactory:
                     func(plugin)
 
             @_run_only_if_pi_initialized
-            def stream_ii_push_record(plugin, current_interface, in_record):
+            def stream_ii_push_record(
+                plugin: object, current_interface: object, in_record: sdk.RecordRef
+            ):
                 # Since we're streaming, we should clear any accumulated records
                 plugin.clear_accumulated_records()
 
@@ -637,7 +643,7 @@ class PluginFactory:
                 func(plugin)
 
             @_run_only_if_pi_initialized
-            def source_pi_push_all_records(plugin, n_record_limit):
+            def source_pi_push_all_records(plugin: object, n_record_limit: int):
                 if not self._init_func(plugin):
                     return
 
