@@ -21,6 +21,8 @@ from typing import Any, List, Optional, Tuple
 import AlteryxPythonSDK as sdk
 
 # 3rd Party Libraries
+import numpy as np
+
 import pandas as pd
 
 
@@ -30,7 +32,9 @@ Column = namedtuple(
 )
 
 
-def get_dataframe_from_records(record_info, record_list):
+def get_dataframe_from_records(
+    record_info: sdk.RecordInfo, record_list: List[sdk.RecordRef]
+):
     """Convert a list of records into a dataframe."""
     if pd is None:
         err_str = f"Pandas must be installed."
@@ -51,7 +55,7 @@ def get_dataframe_from_records(record_info, record_list):
         raise ImportError(err_str)
 
 
-def get_dynamic_type_value(field: object, record: object) -> Any:
+def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
     """
     Extract a field from a record, dynamically calculating its type.
 
@@ -98,7 +102,7 @@ def get_dynamic_type_value(field: object, record: object) -> Any:
         raise TypeError(err_str)
 
 
-def get_column_names_list(record_info_in: object) -> List[str]:
+def get_column_names_list(record_info_in: sdk.RecordInfo) -> List[str]:
     """
     Extract the column names from an Alteryx record info object.
 
@@ -114,7 +118,7 @@ def get_column_names_list(record_info_in: object) -> List[str]:
     return [field.name for field in record_info_in]
 
 
-def get_column_metadata(record_info_in: object) -> dict:
+def get_column_metadata(record_info_in: sdk.RecordInfo) -> dict:
     """
     Extract record metadata from an Alteryx record info object.
 
@@ -144,7 +148,7 @@ def get_column_metadata(record_info_in: object) -> dict:
     return metadata
 
 
-def get_column_types_list(record_info_in: object) -> List[object]:
+def get_column_types_list(record_info_in: sdk.RecordInfo) -> List[object]:
     """
     Collect the column types from an Alteryx record info object.
 
@@ -160,7 +164,9 @@ def get_column_types_list(record_info_in: object) -> List[object]:
     return [field.type for field in record_info_in]
 
 
-def set_field_value(field: object, value: Any, record_creator: object) -> None:
+def set_field_value(
+    field: sdk.Field, value: Any, record_creator: sdk.RecordCreator
+) -> None:
     """
     Write a value to its respective field in a given record_creator object.
 
@@ -198,7 +204,10 @@ def set_field_value(field: object, value: Any, record_creator: object) -> None:
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, bytes(value))
     elif field.type in [sdk.FieldType.double, sdk.FieldType.float]:
-        field.set_from_double(record_creator, float(value))
+        if np.isnan(value):
+            field.set_null(record_creator)
+        else:
+            field.set_from_double(record_creator, float(value))
     elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
         field.set_from_int32(record_creator, int(value))
     elif field.type == sdk.FieldType.int64:
@@ -294,7 +303,7 @@ def add_new_field_to_record_info(
     )
 
 
-def build_ayx_record_info(metadata: dict, record_info: object) -> None:
+def build_ayx_record_info(metadata: dict, record_info: sdk.RecordInfo) -> None:
     """
     Create a record info object from a metadata dictionary.
 
@@ -332,8 +341,8 @@ def build_ayx_record_info(metadata: dict, record_info: object) -> None:
 def build_ayx_record_from_list(
     values_list: List[Any],
     metadata_list: List[dict],
-    record_info: object,
-    record_creator: Optional[object] = None,
+    record_info: sdk.RecordInfo,
+    record_creator: Optional[sdk.RecordCreator] = None,
 ) -> Tuple[object, object]:
     """
     Build a record from a list of values.
@@ -418,7 +427,7 @@ def build_ayx_record_from_list(
 
 
 def add_output_column_to_record_info(
-    output_column: tuple, record_info_out: object
+    output_column: tuple, record_info_out: sdk.RecordInfo
 ) -> None:
     """
     Add a column to a RecordInfo object.

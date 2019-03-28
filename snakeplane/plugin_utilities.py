@@ -18,7 +18,7 @@ import os
 from typing import Any, Dict, List
 
 
-def split_abs_path(path):
+def split_abs_path(path: str) -> List[str]:
     """Split an absolute path into its parts, doing reduction on double dots."""
     allparts = []
     while 1:
@@ -46,7 +46,7 @@ def split_abs_path(path):
     return ret_val
 
 
-def contains_path(full, part):
+def contains_path(full: str, part: str) -> bool:
     """Return a boolean indicating if the part path is a subset of the full path."""
     full_parts = split_abs_path(full)
     part_parts = split_abs_path(part)
@@ -58,7 +58,7 @@ def contains_path(full, part):
     return True
 
 
-def get_tools_location():
+def get_tools_location() -> str:
     """Get the path to the Alteryx Python SDK Tools directory."""
     admin_path = os.path.join(os.environ["APPDATA"], "Alteryx", "Tools")
     user_path = os.path.join(os.environ["PROGRAMDATA"], "Alteryx", "Tools")
@@ -71,7 +71,6 @@ def get_tools_location():
     raise RuntimeError("Tool is not located in Alteryx install locations.")
 
 
-# plugin
 def get_tool_path(tool_name: str) -> str:
     """
     Generate the path to the installed location of the specified tool.
@@ -89,7 +88,6 @@ def get_tool_path(tool_name: str) -> str:
     return os.path.join(get_tools_location(), tool_name)
 
 
-# plugin
 def get_xml_config_gui_settings(xml_dict: Dict[Any, Any]) -> Dict[Any, Any]:
     """
     Get the tool configuration from the config XML.
@@ -107,7 +105,6 @@ def get_xml_config_gui_settings(xml_dict: Dict[Any, Any]) -> Dict[Any, Any]:
     return xml_dict["AlteryxJavaScriptPlugin"]["GuiSettings"]
 
 
-# plugin
 def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any, Any]]:
     """
     Get the input connection configuration from the tool XML.
@@ -134,7 +131,6 @@ def get_xml_config_input_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any,
     return connections
 
 
-# plugin
 def get_xml_config_output_connections(xml_dict: Dict[Any, Any]) -> List[Dict[Any, Any]]:
     """
     Get the output connection configuration from the tool XML.
