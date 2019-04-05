@@ -210,22 +210,18 @@ class PluginFactory:
         @_monitor("push_all_records")
         @wraps(func)
         def wrap_push_all_records(current_plugin: object, n_record_limit: int):
-            if len(current_plugin._state_vars.required_input_names) != 0:
+            if len(current_plugin._state_vars.required_input_names) == 0:
+                if current_plugin.update_only_mode:
+                    self._build_metadata(current_plugin)
+                    for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        anchor.push_metadata(current_plugin)
+                else:
+                    # Only call the users defined function when there are no required
+                    # inputs, since this is the only scenario where something interesting
+                    # happens in this function
+                    func(current_plugin, n_record_limit)
+            else:
                 current_plugin.assert_all_inputs_connected()
-
-            if (
-                current_plugin.update_only_mode
-                and len(current_plugin._state_vars.required_input_names) == 0
-            ):
-                self._build_metadata(current_plugin)
-                for _, anchor in current_plugin._state_vars.output_anchors.items():
-                    anchor.push_metadata(current_plugin)
-
-            if len(current_plugin._state_vars.required_input_names) == 0 and not current_plugin.update_only_mode:
-                # Only call the users defined function when there are no required
-                # inputs, since this is the only scenario where something interesting
-                # happens in this function
-                func(current_plugin, n_record_limit)
 
             return True
 
