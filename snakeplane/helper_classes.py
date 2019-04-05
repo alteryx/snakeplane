@@ -17,10 +17,10 @@
 import copy
 import os
 import sys
-from collections import UserDict
+from collections import OrderedDict, UserDict
 from functools import partial
 from types import SimpleNamespace
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 # Alteryx Libraries
 import AlteryxPythonSDK as sdk
@@ -39,8 +39,11 @@ class AyxPlugin:
     """Base plugin class to be modified by snakeplane."""
 
     def __init__(
-        self, n_tool_id: int, alteryx_engine: object, output_anchor_mgr: object
-    ):
+        self,
+        n_tool_id: int,
+        alteryx_engine: sdk.AlteryxEngine,
+        output_anchor_mgr: sdk.OutputAnchorManager,
+    ) -> None:
         # Initialization data
         self._engine_vars = SimpleNamespace()
         self._engine_vars.n_tool_id = n_tool_id
@@ -111,17 +114,17 @@ class AyxPlugin:
         self.output_manager = OutputManager(self)
 
     @property
-    def initialized(self):
+    def initialized(self) -> bool:
         """Getter for plugin initialization state."""
         return self._state_vars.initialized
 
     @initialized.setter
-    def initialized(self, value):
+    def initialized(self, value: bool) -> None:
         """Setter for plugin initialization state."""
         self._state_vars.initialized = bool(value)
 
     @property
-    def update_only_mode(self):
+    def update_only_mode(self) -> bool:
         """Getter for if designer is in update only mode."""
         return (
             self._engine_vars.alteryx_engine.get_init_var(
@@ -131,7 +134,7 @@ class AyxPlugin:
         )
 
     @property
-    def all_inputs_completed(self: object) -> bool:
+    def all_inputs_completed(self) -> bool:
         """
         Check that all required inputs have successfully completed.
 
@@ -167,7 +170,7 @@ class AyxPlugin:
 
         return True
 
-    def update_sys_path(self):
+    def update_sys_path(self) -> None:
         """Update the sys path to include the current tools libs."""
         # Add lib to sys path
         tool_path = plugin_utils.get_tool_path(self.tool_name)
@@ -186,7 +189,7 @@ class AyxPlugin:
 
         return True
 
-    def save_output_anchor_refs(self):
+    def save_output_anchor_refs(self) -> None:
         """Save all references to output anchors."""
         # Get references to the output anchors
         for anchor_name in self._state_vars.output_anchors:
@@ -196,11 +199,11 @@ class AyxPlugin:
                 anchor_name
             )
 
-    def save_interface(self, name, interface):
+    def save_interface(self, name: str, interface: object) -> None:
         """Save the interface internally."""
         self._state_vars.input_anchors[name].append(interface)
 
-    def update_progress(self, d_percentage):
+    def update_progress(self, d_percentage: float) -> None:
         """Update the progress on this anchor."""
         self._engine_vars.alteryx_engine.output_tool_progress(
             self._engine_vars.n_tool_id, d_percentage
@@ -210,7 +213,7 @@ class AyxPlugin:
             # Inform the downstream tool of this tool's progress.
             anchor._handler.update_progress(d_percentage)
 
-    def close_all_outputs(self):
+    def close_all_outputs(self) -> None:
         """Force all output anchors to close."""
         # Close all output anchors
         for _, anchor in self._state_vars.output_anchors.items():
@@ -220,7 +223,7 @@ class AyxPlugin:
         for anchor_name in self._state_vars.output_anchors:
             self._state_vars.output_anchors[anchor_name]._handler.assert_close()
 
-    def push_all_output_records(self: object) -> None:
+    def push_all_output_records(self) -> None:
         """
         For each output anchor on the plugin, flush all the output records.
 
@@ -236,12 +239,12 @@ class AyxPlugin:
         for _, output_anchor in self._state_vars.output_anchors.items():
             output_anchor.push_records(self)
 
-    def push_all_metadata(self):
+    def push_all_metadata(self) -> None:
         """Pushes all output anchor metadata downstream."""
         for _, anchor in self._state_vars.output_anchors.items():
             anchor.push_metadata(self)
 
-    def clear_accumulated_records(self: object) -> None:
+    def clear_accumulated_records(self) -> None:
         """
         Clear all accumulated records from all plugin interfaces.
 
@@ -259,7 +262,7 @@ class AyxPlugin:
             for connection in anchor:
                 connection._interface_record_vars.record_list_in = []
 
-    def create_record_info(self):
+    def create_record_info(self) -> sdk.RecordInfo:
         """Create a new record info object."""
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
 
@@ -267,7 +270,7 @@ class AyxPlugin:
 class AyxPluginInterface:
     """Input interface base definition."""
 
-    def __init__(self, parent: object, name: str):
+    def __init__(self, parent: object, name: str) -> None:
         self.parent = parent
         self.name = name
         self.initialized = False
@@ -281,12 +284,12 @@ class AyxPluginInterface:
         )
 
     @property
-    def metadata(self):
+    def metadata(self) -> object:
         """Input metadata getter."""
         return copy.deepcopy(self._interface_record_vars.column_metadata)
 
     @property
-    def data(self):
+    def data(self) -> Union[object, List[List[Any]]]:
         """Input data getter."""
         if (
             self.parent.process_data_mode == "stream"
@@ -308,12 +311,12 @@ class AyxPluginInterface:
                 raise ImportError(err_str)
 
     @property
-    def completed(self):
+    def completed(self) -> bool:
         """Interface completed getter."""
         return self._interface_state.input_complete
 
     @completed.setter
-    def completed(self, val):
+    def completed(self, val) -> None:
         """Interface completed setter."""
         self._interface_state.input_complete = val
 
@@ -323,7 +326,7 @@ class AyxPluginInterface:
         return self._interface_record_vars.column_metadata
 
     @anchor_metadata.setter
-    def anchor_metadata(self, val):
+    def anchor_metadata(self, val) -> None:
         """Anchor metadata setter."""
         self._interface_record_vars.column_metadata = val
 
@@ -362,7 +365,7 @@ class AyxPluginInterface:
         ]
         return row
 
-    def accumulate_record(self, record):
+    def accumulate_record(self, record: sdk.RecordRef) -> None:
         """Accumulate an incoming record."""
         row = self.get_values_from_record(record)
 
@@ -372,17 +375,17 @@ class AyxPluginInterface:
 class InputManager(UserDict):
     """Manager of input anchors with helper functions."""
 
-    def __init__(self, plugin):
+    def __init__(self, plugin: object) -> None:
         self._plugin = plugin
         self.data = self._plugin._state_vars.input_anchors
 
     @property
-    def tool_id(self):
+    def tool_id(self) -> int:
         """Getter for the current tool ID."""
         return self._plugin._engine_vars.n_tool_id
 
     @property
-    def workflow_config(self):
+    def workflow_config(self) -> OrderedDict:
         """Getter for the workflow config."""
         return self._plugin.workflow_config
 
@@ -390,11 +393,11 @@ class InputManager(UserDict):
 class OutputManager(UserDict):
     """Manager of output anchors."""
 
-    def __init__(self, plugin):
+    def __init__(self, plugin: object) -> None:
         self._plugin = plugin
         self.data = self._plugin._state_vars.output_anchors
 
-    def get_temp_file_path(self):
+    def get_temp_file_path(self) -> str:
         """Create a temp file using the Alteryx Engine."""
         return self._plugin._engine_vars.alteryx_engine.create_temp_file_name()
 
@@ -407,7 +410,7 @@ class OutputManager(UserDict):
 class OutputAnchor:
     """Output anchor bookkeeping class with helpers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data = None
         self._metadata = None
         self._record_info_out = None
@@ -415,17 +418,17 @@ class OutputAnchor:
         self._handler = None
 
     @property
-    def data(self):
+    def data(self) -> Union[object, List[List[Any]]]:
         """Getter for anchor data."""
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: Union[object, List[List[Any]]]) -> None:
         """Setter for anchor data."""
         self._data = data
 
     @property
-    def metadata(self):
+    def metadata(self) -> object:
         """Getter for the anchor metadata."""
         return copy.deepcopy(self._metadata)
 
@@ -434,7 +437,7 @@ class OutputAnchor:
         """Setter for anchor metadata."""
         self._metadata = metadata
 
-    def get_data_list(self):
+    def get_data_list(self) -> List[List[Any]]:
         """Get the list of data to push downstream as a list of lists."""
         if interface_utils.is_dataframe(self._data):
             return interface_utils.dataframe_to_list(self._data)
@@ -458,7 +461,7 @@ class OutputAnchor:
 
             self._handler.init(self._record_info_out)
 
-    def push_records(self: object, plugin: object) -> None:
+    def push_records(self, plugin: object) -> None:
         """
         Flush all records for an output anchor.
 
@@ -499,7 +502,15 @@ class OutputAnchor:
 class ColumnMetadata:
     """Column Metadata tracking class."""
 
-    def __init__(self, name, col_type, size, scale, source, description):
+    def __init__(
+        self,
+        name: str,
+        col_type: sdk.FieldType,
+        size: int,
+        scale: int,
+        source: str,
+        description: str,
+    ):
         self.name = name
         self.type = col_type
         self.size = size
@@ -539,43 +550,51 @@ class AnchorMetadata:
         self.columns = []
 
     @property
-    def columns(self):
+    def columns(self) -> List[ColumnMetadata]:
         """Getter for columns."""
         return self._columns
 
     @columns.setter
-    def columns(self, value):
+    def columns(self, value: List[ColumnMetadata]):
         """Setter for columns."""
         self._columns = value
 
-    def add_column(self, name, col_type, size=256, scale=0, source="", description=""):
+    def add_column(
+        self,
+        name: str,
+        col_type: sdk.FieldType,
+        size: int = 256,
+        scale: int = 0,
+        source: str = "",
+        description: str = "",
+    ):
         """Add a column to this anchor."""
         self.columns.append(
             ColumnMetadata(name, col_type, size, scale, source, description)
         )
 
-    def index_of(self, name):
+    def index_of(self, name: str):
         """Get the column index of a given column name."""
         try:
             return [c.name for c in self.columns].index(name)
         except ValueError:
             return None
 
-    def get_column_by_name(self, name):
+    def get_column_by_name(self, name: str) -> ColumnMetadata:
         """Get the column given the column name."""
         index = self.index_of(name)
         if index is None:
             return None
         return self.columns[index]
 
-    def get_column_names(self):
+    def get_column_names(self) -> List[str]:
         """Get a list of the column names available."""
         return [c.name for c in self.columns]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> ColumnMetadata:
         """Get the column specified by key (an index)."""
         return self.columns[key]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the number of columns as the length."""
         return len(self.columns)
