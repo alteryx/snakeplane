@@ -209,9 +209,15 @@ def set_field_value(
         else:
             field.set_from_double(record_creator, float(value))
     elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
-        field.set_from_int32(record_creator, int(value))
+        if np.isnan(value):
+            field.set_null(record_creator)
+        else:
+            field.set_from_int32(record_creator, int(value))
     elif field.type == sdk.FieldType.int64:
-        field.set_from_int64(record_creator, int(value))
+        if np.isnan(value):
+            field.set_null(record_creator)
+        else:
+            field.set_from_int64(record_creator, int(value))
     elif field.type in {
         sdk.FieldType.string,
         sdk.FieldType.v_string,
