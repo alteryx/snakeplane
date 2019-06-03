@@ -28,7 +28,7 @@ import pandas as pd
 
 # Create a column named tuple for use in below functions
 Column = namedtuple(
-    "Column", ["name", "type", "size", "source", "description", "value"]
+    "Column", ["name", "type", "size", "scale", "source", "description", "value"]
 )
 
 
@@ -94,11 +94,12 @@ def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
             "v_string": field.get_as_string,
             "v_wstring": field.get_as_string,
             "wstring": field.get_as_string,
+            "fixeddecimal": field.get_as_double,
         }[str(field.type)](record)
     except KeyError:
         # The type wasn't found, throw an error to let the use know
         err_str = f"""Failed to automatically convert field type "{str(field.type)}"
-                    due to unidentified type name."""
+                    due to unidentified type name. This is due to a currently unsupported type."""
         raise TypeError(err_str)
 
 
@@ -142,6 +143,7 @@ def get_column_metadata(record_info_in: sdk.RecordInfo) -> dict:
             field.type,
             size=field.size,
             source=field.source,
+            scale=field.scale,
             description=field.description,
         )
 
@@ -203,7 +205,11 @@ def set_field_value(
         field.set_from_bool(record_creator, bool(value))
     elif field.type == sdk.FieldType.blob:
         field.set_from_blob(record_creator, bytes(value))
-    elif field.type in [sdk.FieldType.double, sdk.FieldType.float]:
+    elif field.type in {
+        sdk.FieldType.double,
+        sdk.FieldType.float,
+        sdk.FieldType.fixeddecimal,
+    }:
         if np.isnan(value):
             field.set_null(record_creator)
         else:
@@ -228,6 +234,8 @@ def set_field_value(
         sdk.FieldType.time,
     }:
         field.set_from_string(record_creator, str(value))
+    else:
+        raise ValueError("Unsupported field type found on output.")
 
 
 def add_new_field_to_record_info(
@@ -235,6 +243,7 @@ def add_new_field_to_record_info(
     field_name: str,
     field_type: object,
     field_size: int,
+    field_scale: int,
     field_source: str,
     field_desc: str,
 ) -> None:
@@ -304,6 +313,7 @@ def add_new_field_to_record_info(
         field_name,
         field_type,
         size=field_size,
+        scale=field_scale,
         source=field_source,
         description=field_desc,
     )
@@ -408,6 +418,7 @@ def build_ayx_record_from_list(
             metadata_list[i].name,
             metadata_list[i].type,
             metadata_list[i].size,
+            metadata_list[i].scale,
             metadata_list[i].source,
             metadata_list[i].description,
             values_list[i],
@@ -455,6 +466,7 @@ def add_output_column_to_record_info(
         output_column.name,
         output_column.type,
         output_column.size,
+        output_column.scale,
         output_column.source,
         output_column.description,
     )
