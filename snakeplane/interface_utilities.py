@@ -22,8 +22,10 @@ import AlteryxPythonSDK as sdk
 
 # 3rd Party Libraries
 import numpy as np
-
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 
 # Create a column named tuple for use in below functions
