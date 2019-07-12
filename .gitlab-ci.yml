@@ -1,8 +1,6 @@
-package:
+build:
   image: python:3.6-alpine
   script:
-    - pip3 install wheel setuptools lazy-import
+    - pip3 install wheel setuptools twine
     - python3 setup.py sdist bdist_wheel
-  artifacts:
-    paths:
-    - dist/
+    - twine upload dist/*
