@@ -2,6 +2,7 @@ package:
   image: python:3.6-alpine
   script:
     - pip3 install wheel setuptools
+    - pip3 install -r pilot/env/requirements.txt
     - python3 setup.py sdist bdist_wheel
   artifacts:
     paths:
