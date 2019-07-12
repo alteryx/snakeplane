@@ -10,6 +10,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="SnakePlane",
+    url='https://github.com/alteryx/snakeplane'
     license="Apache License 2.0",
     version=__version__,
     python_requires='>=3.6.0',
