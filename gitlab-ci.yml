@@ -1,0 +1,8 @@
+package:
+  image: python:3.6-alpine
+  script:
+    - pip3 install wheel setuptools
+    - python3 setup.py sdist bdist_wheel
+  artifacts:
+    paths:
+    - dist/
