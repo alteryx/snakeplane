@@ -4,3 +4,5 @@ build:
     - pip3 install wheel setuptools twine
     - python3 setup.py sdist bdist_wheel
     - twine upload dist/*
+  only:
+    - master
