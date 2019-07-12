@@ -23,7 +23,6 @@ setup(
         "xmltodict==0.11.0",
         "numpy==1.16.0",
         "pandas==0.23.4",
-        "dateparser==0.7.0",
-        "lazy-import==0.2.2"
+        "dateparser==0.7.0"
     ],
 )
