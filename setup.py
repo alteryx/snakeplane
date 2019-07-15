@@ -17,5 +17,5 @@ setup(
     author="Alteryx",
     author_email="awalden@alteryx.com",
     install_requires=["xmltodict==0.11.0", "numpy==1.16.0"],
-    packages=find_packages(where="snakeplane"),
+    packages=find_packages(),
 )
