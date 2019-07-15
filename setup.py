@@ -16,6 +16,6 @@ setup(
     description="The Alteryx Python SDK Abstraction Layer",
     author="Alteryx",
     author_email="awalden@alteryx.com",
-    package_dir={"": "snakeplane"},
     install_requires=["xmltodict==0.11.0", "numpy==1.16.0"],
+    packages=find_packages(where="snakeplane"),
 )
