@@ -26,7 +26,10 @@ from typing import Any, List, Tuple, Union
 import AlteryxPythonSDK as sdk
 
 # 3rd Party Libraries
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 # Custom libraries
 import snakeplane.interface_utilities as interface_utils
