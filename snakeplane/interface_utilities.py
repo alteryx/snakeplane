@@ -12,20 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 """Interface utilities for the snakeplane library."""
-
-# Standard Library
 from collections import namedtuple
 from typing import Any, List, Optional, Tuple
 
-# Alteryx Libraries
 import AlteryxPythonSDK as sdk
-
-# 3rd Party Libraries
-import numpy as np
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
 
 
 # Create a column named tuple for use in below functions
@@ -50,11 +40,13 @@ def get_dataframe_from_records(
         data.append(row)
 
     try:
-        return pd.DataFrame(data, columns=col_names)
+        import pandas as pd
     except ImportError:
         err_str = """The Pandas library must be installed to
                     allow dataframe as input_type."""
         raise ImportError(err_str)
+    else:
+        return pd.DataFrame(data, columns=col_names)
 
 
 def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
@@ -201,6 +193,8 @@ def set_field_value(
         This is a stateful function that produces side effects by modifying
         the record_creator object.
     """
+    import numpy as np
+
     if value is None:
         field.set_null(record_creator)
     elif field.type == sdk.FieldType.bool:
@@ -489,11 +483,13 @@ def is_dataframe(input: Any) -> bool:
         Indication if the input is a pandas dataframe
     """
     try:
-        return isinstance(input, pd.DataFrame)
+        import pandas as pd
     except ImportError:
         err_str = """The Pandas library must be installed to
                     allow dataframe as input_type."""
         raise ImportError(err_str)
+    else:
+        return isinstance(input, pd.DataFrame)
 
 
 def dataframe_to_list(df: object) -> List[List[Any]]:
