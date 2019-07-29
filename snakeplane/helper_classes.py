@@ -22,16 +22,8 @@ from functools import partial
 from types import SimpleNamespace
 from typing import Any, List, Tuple, Union
 
-# Alteryx Libraries
 import AlteryxPythonSDK as sdk
 
-# 3rd Party Libraries
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
-
-# Custom libraries
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
 
@@ -303,15 +295,17 @@ class AyxPluginInterface:
             return self._interface_record_vars.record_list_in
         else:
             try:
-                return pd.DataFrame(
-                    self._interface_record_vars.record_list_in,
-                    columns=self.metadata.get_column_names(),
-                )
+                import pandas as pd
             except ImportError:
                 err_str = """The Pandas library must be installed to
                             allow dataframe as input_type."""
                 self.parent.logging.display_error_msg(err_str)
                 raise ImportError(err_str)
+            else:
+                return pd.DataFrame(
+                    self._interface_record_vars.record_list_in,
+                    columns=self.metadata.get_column_names(),
+                )
 
     @property
     def completed(self) -> bool:
