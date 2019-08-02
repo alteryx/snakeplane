@@ -354,11 +354,11 @@ class AyxPluginInterface:
                 metadata: a dict containing the names, types, sizes,
                 sources, and descriptions of each field
         """
-        record_info = self._interface_record_vars.record_info_in
+        fields = self._interface_record_vars.fields
 
         row = [
             interface_utils.get_dynamic_type_value(field, in_record)
-            for field in record_info
+            for field in fields
         ]
         return row
 

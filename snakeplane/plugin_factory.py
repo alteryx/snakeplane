@@ -300,6 +300,7 @@ class PluginFactory:
             current_plugin = current_interface.parent
             current_plugin.update_sys_path()
             current_interface._interface_record_vars.record_info_in = record_info_in
+            current_interface._interface_record_vars.fields = [field for field in record_info_in]
             current_interface.initialized = True
 
             metadata = interface_utils.get_column_metadata(record_info_in)

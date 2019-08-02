@@ -48,6 +48,24 @@ def get_dataframe_from_records(
     else:
         return pd.DataFrame(data, columns=col_names)
 
+type_dict = {
+    "blob": "get_as_blob",
+    "byte": "get_as_int32",
+    "int16": "get_as_int32",
+    "int32": "get_as_int32",
+    "int64": "get_as_int64",
+    "float": "get_as_double",
+    "double": "get_as_double",
+    "date": "get_as_string",
+    "time": "get_as_string",
+    "datetime": "get_as_string",
+    "bool": "get_as_bool",
+    "string": "get_as_string",
+    "v_string": "get_as_string",
+    "v_wstring": "get_as_string",
+    "wstring": "get_as_string",
+    "fixeddecimal": "get_as_double",
+}
 
 def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
     """
@@ -72,24 +90,7 @@ def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
         value of the desired field from the input record
     """
     try:
-        return {
-            "blob": field.get_as_blob,
-            "byte": field.get_as_int32,
-            "int16": field.get_as_int32,
-            "int32": field.get_as_int32,
-            "int64": field.get_as_int64,
-            "float": field.get_as_double,
-            "double": field.get_as_double,
-            "date": field.get_as_string,
-            "time": field.get_as_string,
-            "datetime": field.get_as_string,
-            "bool": field.get_as_bool,
-            "string": field.get_as_string,
-            "v_string": field.get_as_string,
-            "v_wstring": field.get_as_string,
-            "wstring": field.get_as_string,
-            "fixeddecimal": field.get_as_double,
-        }[str(field.type)](record)
+        return getattr(field, type_dict[str(field.type)])(record)
     except KeyError:
         # The type wasn't found, throw an error to let the use know
         err_str = f"""Failed to automatically convert field type "{str(field.type)}"
