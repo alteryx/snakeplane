@@ -285,4 +285,3 @@ def freeze(c):
             f"./env/Scripts/pip.exe freeze > ./env/requirements.txt",
         ]
     )
-
