@@ -207,6 +207,7 @@ class PluginFactory:
         None
         This method produces side-effects by registering the user defined function
         """
+
         @_monitor("push_all_records")
         @wraps(func)
         def wrap_push_all_records(current_plugin: object, n_record_limit: int):
@@ -300,7 +301,13 @@ class PluginFactory:
             current_plugin = current_interface.parent
             current_plugin.update_sys_path()
             current_interface._interface_record_vars.record_info_in = record_info_in
-            current_interface._interface_record_vars.fields = [field for field in record_info_in]
+            current_interface._interface_record_vars.fields = [
+                field for field in record_info_in
+            ]
+            current_interface._interface_record_vars.field_getters = {
+                field: interface_utils.get_getter_from_field(field)
+                for field in current_interface._interface_record_vars.fields
+            }
             current_interface.initialized = True
 
             metadata = interface_utils.get_column_metadata(record_info_in)

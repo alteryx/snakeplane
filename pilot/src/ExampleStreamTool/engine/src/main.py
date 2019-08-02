@@ -21,6 +21,7 @@ from snakeplane.plugin_factory import PluginFactory
 # Initialization of the plug in factory, used for making the AyxPlugin class
 factory = PluginFactory("ExampleStreamTool")
 
+
 @factory.initialize_plugin
 def init(input_mgr, user_data, logger):
     """Initialize the example tool."""
@@ -64,7 +65,7 @@ def build_metadata(input_mgr, output_mgr, user_data, logger):
     metadata = input_anchor.metadata
 
     # Add the new column
-    metadata.add_column("Test",sdk.FieldType.float)
+    metadata.add_column("Test", sdk.FieldType.float)
 
     # Assign the metadata to the output
     output_anchor = output_mgr["Output"]
