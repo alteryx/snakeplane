@@ -153,6 +153,7 @@ class PluginFactory:
                 return val
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(self._plugin, "pi_init", wrap_pi_init)
 
@@ -234,6 +235,7 @@ class PluginFactory:
 
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
 
@@ -261,6 +263,7 @@ class PluginFactory:
                 return func(current_plugin, str_name)
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(
             self._plugin, "pi_add_outgoing_connection", wrap_pi_add_outgoing_connection
@@ -290,6 +293,7 @@ class PluginFactory:
                     func(current_plugin)
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
@@ -350,6 +354,7 @@ class PluginFactory:
                 return True
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(self._plugin.plugin_interface, "ii_init", wrap_ii_init)
 
@@ -382,6 +387,7 @@ class PluginFactory:
                 return True
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(self._plugin.plugin_interface, "ii_push_record", wrap_ii_push_record)
 
@@ -414,6 +420,7 @@ class PluginFactory:
                 return func(current_interface, d_percentage)
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(
             self._plugin.plugin_interface, "ii_update_progress", wrap_ii_update_progress
@@ -452,6 +459,7 @@ class PluginFactory:
                 return func(current_plugin)
             except Exception as e:
                 logger.exception(e)
+                raise e
 
         setattr(self._plugin.plugin_interface, "ii_close", wrap_ii_close)
 
