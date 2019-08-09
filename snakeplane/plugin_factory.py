@@ -14,6 +14,7 @@
 """Implementation of a plugin factory for use in snakeplane framework."""
 
 # Built in Libraries
+import logging
 from functools import wraps
 
 # 3rd Party Libraries
@@ -26,6 +27,7 @@ import xmltodict
 
 DEBUG = False
 
+logger = logging.getLogger(__name__)
 
 class PluginFactory:
     """
@@ -127,27 +129,30 @@ class PluginFactory:
         @_monitor("pi_init")
         @wraps(func)
         def wrap_pi_init(current_plugin, config_xml):
-            current_plugin.update_sys_path()
-            current_plugin.save_output_anchor_refs()
+            try:
+                current_plugin.update_sys_path()
+                current_plugin.save_output_anchor_refs()
 
-            # Parse XML and save
-            current_plugin.workflow_config = xmltodict.parse(config_xml)[
-                "Configuration"
-            ]
+                # Parse XML and save
+                current_plugin.workflow_config = xmltodict.parse(config_xml)[
+                    "Configuration"
+                ]
 
-            # Call decorated function
-            val = func(current_plugin)
+                # Call decorated function
+                val = func(current_plugin)
 
-            if (
-                current_plugin.update_only_mode
-                and len(current_plugin._state_vars.required_input_names) == 0
-            ):
-                self._init_func(current_plugin)
+                if (
+                    current_plugin.update_only_mode
+                    and len(current_plugin._state_vars.required_input_names) == 0
+                ):
+                    self._init_func(current_plugin)
 
-            # Boilerplate Side Effects
-            current_plugin.initialized = val
+                # Boilerplate Side Effects
+                current_plugin.initialized = val
 
-            return val
+                return val
+            except Exception as e:
+                logger.exception(e)
 
         setattr(self._plugin, "pi_init", wrap_pi_init)
 
@@ -211,20 +216,24 @@ class PluginFactory:
         @_monitor("push_all_records")
         @wraps(func)
         def wrap_push_all_records(current_plugin: object, n_record_limit: int):
-            if len(current_plugin._state_vars.required_input_names) == 0:
-                if current_plugin.update_only_mode:
-                    self._build_metadata(current_plugin)
-                    for _, anchor in current_plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(current_plugin)
+            try:
+                if len(current_plugin._state_vars.required_input_names) == 0:
+                    if current_plugin.update_only_mode:
+                        self._build_metadata(current_plugin)
+                        for _, anchor in current_plugin._state_vars.output_anchors.items():
+                            anchor.push_metadata(current_plugin)
+                    else:
+                        # Only call the users defined function when there are no required
+                        # inputs, since this is the only scenario where something interesting
+                        # happens in this function
+                        func(current_plugin, n_record_limit)
                 else:
-                    # Only call the users defined function when there are no required
-                    # inputs, since this is the only scenario where something interesting
-                    # happens in this function
-                    func(current_plugin, n_record_limit)
-            else:
-                current_plugin.assert_all_inputs_connected()
+                    current_plugin.assert_all_inputs_connected()
 
-            return True
+                return True
+
+            except Exception as e:
+                logger.exception(e)
 
         setattr(self._plugin, "pi_push_all_records", wrap_push_all_records)
 
@@ -248,7 +257,10 @@ class PluginFactory:
         @_monitor("pi_add_outgoing_connection")
         @wraps(func)
         def wrap_pi_add_outgoing_connection(current_plugin: object, str_name: str):
-            return func(current_plugin, str_name)
+            try:
+                return func(current_plugin, str_name)
+            except Exception as e:
+                logger.exception(e)
 
         setattr(
             self._plugin, "pi_add_outgoing_connection", wrap_pi_add_outgoing_connection
@@ -273,8 +285,11 @@ class PluginFactory:
         @_monitor("pi_close")
         @wraps(func)
         def wrap_pi_close(current_plugin: object, b_has_errors: bool) -> None:
-            if current_plugin.all_inputs_completed:
-                func(current_plugin)
+            try:
+                if current_plugin.all_inputs_completed:
+                    func(current_plugin)
+            except Exception as e:
+                logger.exception(e)
 
         setattr(self._plugin, "pi_close", wrap_pi_close)
 
@@ -298,40 +313,43 @@ class PluginFactory:
         @_monitor("ii_init")
         @wraps(func)
         def wrap_ii_init(current_interface: object, record_info_in: object):
-            current_plugin = current_interface.parent
-            current_plugin.update_sys_path()
-            current_interface._interface_record_vars.record_info_in = record_info_in
-            current_interface._interface_record_vars.fields = [
-                field for field in record_info_in
-            ]
-            current_interface._interface_record_vars.field_getters = {
-                field: interface_utils.get_getter_from_field(field)
-                for field in current_interface._interface_record_vars.fields
-            }
-            current_interface.initialized = True
+            try:
+                current_plugin = current_interface.parent
+                current_plugin.update_sys_path()
+                current_interface._interface_record_vars.record_info_in = record_info_in
+                current_interface._interface_record_vars.fields = [
+                    field for field in record_info_in
+                ]
+                current_interface._interface_record_vars.field_getters = {
+                    field: interface_utils.get_getter_from_field(field)
+                    for field in current_interface._interface_record_vars.fields
+                }
+                current_interface.initialized = True
 
-            metadata = interface_utils.get_column_metadata(record_info_in)
+                metadata = interface_utils.get_column_metadata(record_info_in)
 
-            current_interface.anchor_metadata = metadata
+                current_interface.anchor_metadata = metadata
 
-            init_success = func(current_interface, record_info_in)
+                init_success = func(current_interface, record_info_in)
 
-            if not init_success:
-                current_plugin.initialized = False
-                current_interface.initialized = False
-                return False
+                if not init_success:
+                    current_plugin.initialized = False
+                    current_interface.initialized = False
+                    return False
 
-            if (
-                current_plugin.update_only_mode
-                and current_plugin.all_required_inputs_initialized
-            ):
-                ret_val = self._init_func(current_plugin)
-                if ret_val:
-                    self._build_metadata(current_plugin)
-                    for _, anchor in current_plugin._state_vars.output_anchors.items():
-                        anchor.push_metadata(current_plugin)
+                if (
+                    current_plugin.update_only_mode
+                    and current_plugin.all_required_inputs_initialized
+                ):
+                    ret_val = self._init_func(current_plugin)
+                    if ret_val:
+                        self._build_metadata(current_plugin)
+                        for _, anchor in current_plugin._state_vars.output_anchors.items():
+                            anchor.push_metadata(current_plugin)
 
-            return True
+                return True
+            except Exception as e:
+                logger.exception(e)
 
         setattr(self._plugin.plugin_interface, "ii_init", wrap_ii_init)
 
@@ -354,13 +372,16 @@ class PluginFactory:
         @_monitor("ii_push_record")
         @wraps(func)
         def wrap_ii_push_record(current_interface: object, in_record: sdk.RecordRef):
-            current_plugin = current_interface.parent
+            try:
+                current_plugin = current_interface.parent
 
-            if not current_plugin.initialized or current_plugin.update_only_mode:
-                return False
+                if not current_plugin.initialized or current_plugin.update_only_mode:
+                    return False
 
-            func(current_plugin, current_interface, in_record)
-            return True
+                func(current_plugin, current_interface, in_record)
+                return True
+            except Exception as e:
+                logger.exception(e)
 
         setattr(self._plugin.plugin_interface, "ii_push_record", wrap_ii_push_record)
 
@@ -383,13 +404,16 @@ class PluginFactory:
         @_monitor("ii_update_progress")
         @wraps(func)
         def wrap_ii_update_progress(current_interface: object, d_percentage: float):
-            current_plugin = current_interface.parent
-            if current_plugin.update_only_mode:
-                return
+            try:
+                current_plugin = current_interface.parent
+                if current_plugin.update_only_mode:
+                    return
 
-            current_plugin.update_progress(d_percentage)
+                current_plugin.update_progress(d_percentage)
 
-            return func(current_interface, d_percentage)
+                return func(current_interface, d_percentage)
+            except Exception as e:
+                logger.exception(e)
 
         setattr(
             self._plugin.plugin_interface, "ii_update_progress", wrap_ii_update_progress
@@ -415,16 +439,19 @@ class PluginFactory:
         @_monitor("ii_close")
         @wraps(func)
         def wrap_ii_close(current_interface: object):
-            current_plugin = current_interface.parent
+            try:
+                current_plugin = current_interface.parent
 
-            current_plugin.assert_all_inputs_connected()
+                current_plugin.assert_all_inputs_connected()
 
-            if current_plugin.update_only_mode:
-                return
+                if current_plugin.update_only_mode:
+                    return
 
-            current_interface.completed = True
+                current_interface.completed = True
 
-            return func(current_plugin)
+                return func(current_plugin)
+            except Exception as e:
+                logger.exception(e)
 
         setattr(self._plugin.plugin_interface, "ii_close", wrap_ii_close)
 
