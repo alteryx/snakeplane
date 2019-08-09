@@ -348,7 +348,7 @@ def dataframe_to_list(df: object) -> List[List[Any]]:
     List[List[Any]]
         A list of lists of the pandas dataframe data
     """
-    import pandas as pd
+    import numpy as np
 
-    df.where(pd.notnull(df), None, inplace=True)
+    df.replace(np.nan, None, inplace=True)
     return df.values.tolist()
