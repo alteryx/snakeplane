@@ -12,49 +12,34 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 """Interface utilities for the snakeplane library."""
-
-# Standard Library
-from collections import namedtuple
 from typing import Any, List, Optional, Tuple
 
-# Alteryx Libraries
 import AlteryxPythonSDK as sdk
 
-# 3rd Party Libraries
-import numpy as np
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
+
+type_dict = {
+    "blob": "get_as_blob",
+    "byte": "get_as_int32",
+    "int16": "get_as_int32",
+    "int32": "get_as_int32",
+    "int64": "get_as_int64",
+    "float": "get_as_double",
+    "double": "get_as_double",
+    "date": "get_as_string",
+    "time": "get_as_string",
+    "datetime": "get_as_string",
+    "bool": "get_as_bool",
+    "string": "get_as_string",
+    "v_string": "get_as_string",
+    "v_wstring": "get_as_string",
+    "wstring": "get_as_string",
+    "fixeddecimal": "get_as_double",
+    "spatialobj": "get_as_blob"
+}
 
 
-# Create a column named tuple for use in below functions
-Column = namedtuple(
-    "Column", ["name", "type", "size", "scale", "source", "description", "value"]
-)
-
-
-def get_dataframe_from_records(
-    record_info: sdk.RecordInfo, record_list: List[sdk.RecordRef]
-):
-    """Convert a list of records into a dataframe."""
-    if pd is None:
-        err_str = f"Pandas must be installed."
-        raise NotImplementedError(err_str)
-
-    col_names = get_column_names_list(record_info)
-
-    data = []
-    for record in record_list:
-        row = [get_dynamic_type_value(field, record) for field in record_info]
-        data.append(row)
-
-    try:
-        return pd.DataFrame(data, columns=col_names)
-    except ImportError:
-        err_str = """The Pandas library must be installed to
-                    allow dataframe as input_type."""
-        raise ImportError(err_str)
+def get_getter_from_field(field):
+    return getattr(field, type_dict[str(field.type)])
 
 
 def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
@@ -80,24 +65,7 @@ def get_dynamic_type_value(field: sdk.Field, record: sdk.RecordRef) -> Any:
         value of the desired field from the input record
     """
     try:
-        return {
-            "blob": field.get_as_blob,
-            "byte": field.get_as_int32,
-            "int16": field.get_as_int32,
-            "int32": field.get_as_int32,
-            "int64": field.get_as_int64,
-            "float": field.get_as_double,
-            "double": field.get_as_double,
-            "date": field.get_as_string,
-            "time": field.get_as_string,
-            "datetime": field.get_as_string,
-            "bool": field.get_as_bool,
-            "string": field.get_as_string,
-            "v_string": field.get_as_string,
-            "v_wstring": field.get_as_string,
-            "wstring": field.get_as_string,
-            "fixeddecimal": field.get_as_double,
-        }[str(field.type)](record)
+        return getattr(field, type_dict[str(field.type)])(record)
     except KeyError:
         # The type wasn't found, throw an error to let the use know
         err_str = f"""Failed to automatically convert field type "{str(field.type)}"
@@ -168,76 +136,34 @@ def get_column_types_list(record_info_in: sdk.RecordInfo) -> List[object]:
     return [field.type for field in record_info_in]
 
 
-def set_field_value(
-    field: sdk.Field, value: Any, record_creator: sdk.RecordCreator
-) -> None:
-    """
-    Write a value to its respective field in a given record_creator object.
+type_cast_dict = {
+    sdk.FieldType.bool: ("set_from_bool", bool),
+    sdk.FieldType.blob: ("set_from_blob", bytes),
+    sdk.FieldType.double: ("set_from_double", float),
+    sdk.FieldType.float: ("set_from_double", float),
+    sdk.FieldType.fixeddecimal: ("set_from_double", float),
+    sdk.FieldType.byte: ("set_from_int32", int),
+    sdk.FieldType.int16: ("set_from_int32", int),
+    sdk.FieldType.int32: ("set_from_int32", int),
+    sdk.FieldType.int64: ("set_from_int64", int),
+    sdk.FieldType.string: ("set_from_string", str),
+    sdk.FieldType.v_string: ("set_from_string", str),
+    sdk.FieldType.v_wstring: ("set_from_string", str),
+    sdk.FieldType.wstring: ("set_from_string", str),
+    sdk.FieldType.date: ("set_from_string", str),
+    sdk.FieldType.datetime: ("set_from_string", str),
+    sdk.FieldType.time: ("set_from_string", str),
+}
 
-    Parameters
-    ----------
-    field : object
-        An Alteryx Field object that is present in an Alteryx RecordInfo object.
-        Alteryx Field objects contain various attributes, including type, as well
-        as the actual methods that allow for getting/setting values in the
-        RecordRef passed in via C++ engine.
 
-    value : Any
-        This is the actual Python object of any type to pass into the field.  It
-        is the user's responsibility to know whether this Python object is
-        compatible with the destination Field's type.
+def get_field_setter_from_type(field):
+    set_attr_name, caster = type_cast_dict[field.type]
+    setter = getattr(field, set_attr_name)
 
-    record_creator : object
-        An Alteryx RecordCreator object.  The RecordCreator object is created by
-        calling the construct_record_creator method on an Alteryx RecordInfo
-        object.  It is a stateful object which is populated with values as a
-        side-effect of this function.  When its finalize method is called, it
-        returns an actual reference to the record's data, in the form of an
-        Alteryx RecordRef object.
+    def setter_func(record_creator, value):
+        setter(record_creator, caster(value))
 
-    Returns
-    -------
-    None
-        This is a stateful function that produces side effects by modifying
-        the record_creator object.
-    """
-    if value is None:
-        field.set_null(record_creator)
-    elif field.type == sdk.FieldType.bool:
-        field.set_from_bool(record_creator, bool(value))
-    elif field.type == sdk.FieldType.blob:
-        field.set_from_blob(record_creator, bytes(value))
-    elif field.type in {
-        sdk.FieldType.double,
-        sdk.FieldType.float,
-        sdk.FieldType.fixeddecimal,
-    }:
-        if np.isnan(value):
-            field.set_null(record_creator)
-        else:
-            field.set_from_double(record_creator, float(value))
-    elif field.type in {sdk.FieldType.byte, sdk.FieldType.int16, sdk.FieldType.int32}:
-        if np.isnan(value):
-            field.set_null(record_creator)
-        else:
-            field.set_from_int32(record_creator, int(value))
-    elif field.type == sdk.FieldType.int64:
-        if np.isnan(value):
-            field.set_null(record_creator)
-        else:
-            field.set_from_int64(record_creator, int(value))
-    elif field.type in {
-        sdk.FieldType.string,
-        sdk.FieldType.v_string,
-        sdk.FieldType.v_wstring,
-        sdk.FieldType.wstring,
-        sdk.FieldType.date,
-        sdk.FieldType.datetime,
-        sdk.FieldType.time,
-    }:
-        field.set_from_string(record_creator, str(value))
-    else:
-        raise ValueError("Unsupported field type found on output.")
+    return setter_func
 
 
 def add_new_field_to_record_info(
@@ -356,95 +282,6 @@ def build_ayx_record_info(metadata: dict, record_info: sdk.RecordInfo) -> None:
         add_output_column_to_record_info(output_column, record_info)
 
 
-def build_ayx_record_from_list(
-    values_list: List[Any],
-    metadata_list: List[dict],
-    record_info: sdk.RecordInfo,
-    record_creator: Optional[sdk.RecordCreator] = None,
-) -> Tuple[object, object]:
-    """
-    Build a record from a list of values.
-
-    Takes a list of values that represents a single row of data, along with metadata
-    and a blank or already populated Alteryx RecordInfo object, and returns a tuple
-    containing a populated Alteryx RecordRef object and an already initialized
-    RecordCreator object.
-    The returned RecordCreator object can optionally be passed back into the function,
-    allowing for improved performance when looping through a list of new values.
-
-    Parameters
-    ----------
-    values_list : List[Any]
-        A list of Python objects of any type that represents a single record of
-        data.  The 0th index of the list represents data in the first column
-        of the record, and so on.
-
-    metadata_list : List[dict]
-        (This might not be a list)
-        A list of the names, types, sizes, sources, and descriptions
-        for each respective column. These are used to generate
-        the Alteryx RecordInfo object (if it doesn't already exist) for the names
-        of each respective Field object.
-
-    record_info : object
-        An Alteryx RecordInfo object.
-        Alteryx RecordInfo objects act as containers for the necessary metadata
-        needed by the Alteryx engine to generate, identify, and manipulate
-        each record of data passing through the tool.
-
-    record_creator : Optional[object]
-        An optional Alteryx RecordCreator object. The RecordCreator object is created
-        by calling the construct_record_creator method on an Alteryx RecordInfo
-        object.  It is a stateful object which is populated with values as a
-        side-effect of this function.  When its finalize method is called, it
-        returns an actual reference to the record's data, in the form of an
-        Alteryx RecordRef object.
-        If no record_creator object is passed into the function, one will be created
-        using the record_info object.
-        The function will automatically reset the record_creator if one is passed in.
-
-    Returns
-    -------
-    Tuple(object, object)
-        First value in tuple:
-            Alteryx RecordRef object, with each Field populated with the respective
-            values in the values_list parameter.
-        Second value in tuple:
-            Alteryx RecordCreator object.  If one was passed in as a parameter, it
-            returns it after creating a record with it.
-            If one is not passed in, it creates a new one from the RecordInfo param,
-            uses it to create a record, and returns it.
-    """
-    columns = [
-        Column(
-            metadata_list[i].name,
-            metadata_list[i].type,
-            metadata_list[i].size,
-            metadata_list[i].scale,
-            metadata_list[i].source,
-            metadata_list[i].description,
-            values_list[i],
-        )
-        for i in range(len(metadata_list))
-    ]
-
-    if record_info.num_fields == 0:
-        for column in columns:
-            add_output_column_to_record_info(column, record_info)
-    if record_creator:
-        record_creator.reset()
-    else:
-        record_creator = record_info.construct_record_creator()
-
-    for column in columns:
-        field = record_info.get_field_by_name(column.name)
-        set_field_value(field, column.value, record_creator)
-
-    ayx_record = record_creator.finalize_record()
-
-    return (ayx_record, record_creator)
-
-
 def add_output_column_to_record_info(
     output_column: tuple, record_info_out: sdk.RecordInfo
 ) -> None:
@@ -489,11 +326,13 @@ def is_dataframe(input: Any) -> bool:
         Indication if the input is a pandas dataframe
     """
     try:
-        return isinstance(input, pd.DataFrame)
+        import pandas as pd
     except ImportError:
         err_str = """The Pandas library must be installed to
                     allow dataframe as input_type."""
         raise ImportError(err_str)
+    else:
+        return isinstance(input, pd.DataFrame)
 
 
 def dataframe_to_list(df: object) -> List[List[Any]]:
@@ -510,4 +349,7 @@ def dataframe_to_list(df: object) -> List[List[Any]]:
     List[List[Any]]
         A list of lists of the pandas dataframe data
     """
+    import numpy as np
+
+    df.replace(np.nan, None, inplace=True)
     return df.values.tolist()

@@ -17,21 +17,13 @@
 import copy
 import os
 import sys
-from collections import OrderedDict, UserDict
+from collections import OrderedDict, namedtuple, UserDict
 from functools import partial
 from types import SimpleNamespace
 from typing import Any, List, Tuple, Union
 
-# Alteryx Libraries
 import AlteryxPythonSDK as sdk
 
-# 3rd Party Libraries
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
-
-# Custom libraries
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
 
@@ -303,15 +295,17 @@ class AyxPluginInterface:
             return self._interface_record_vars.record_list_in
         else:
             try:
-                return pd.DataFrame(
-                    self._interface_record_vars.record_list_in,
-                    columns=self.metadata.get_column_names(),
-                )
+                import pandas as pd
             except ImportError:
                 err_str = """The Pandas library must be installed to
                             allow dataframe as input_type."""
                 self.parent.logging.display_error_msg(err_str)
                 raise ImportError(err_str)
+            else:
+                return pd.DataFrame(
+                    self._interface_record_vars.record_list_in,
+                    columns=self.metadata.get_column_names(),
+                )
 
     @property
     def completed(self) -> bool:
@@ -360,12 +354,10 @@ class AyxPluginInterface:
                 metadata: a dict containing the names, types, sizes,
                 sources, and descriptions of each field
         """
-        record_info = self._interface_record_vars.record_info_in
+        fields = self._interface_record_vars.fields
+        field_getters = self._interface_record_vars.field_getters
 
-        row = [
-            interface_utils.get_dynamic_type_value(field, in_record)
-            for field in record_info
-        ]
+        row = [field_getters[field](in_record) for field in fields]
         return row
 
     def accumulate_record(self, record: sdk.RecordRef) -> None:
@@ -480,6 +472,7 @@ class OutputAnchor:
         -------
         None
         """
+
         out_values_list = self.get_data_list()
         out_col_metadata = self.metadata
 
@@ -490,13 +483,49 @@ class OutputAnchor:
         if not self._record_info_out:
             self.push_metadata(plugin)
 
-        for value in out_values_list:
-            record_and_creator = interface_utils.build_ayx_record_from_list(
-                value, out_col_metadata, self._record_info_out, self._record_creator
-            )
-            out_record, self._record_creator = record_and_creator
+        Column = namedtuple(
+            "Column", ["name", "type", "size", "scale", "source", "description"]
+        )
 
-            self._handler.push_record(out_record, False)
+        columns = [
+            Column(
+                out_col_metadata[i].name,
+                out_col_metadata[i].type,
+                out_col_metadata[i].size,
+                out_col_metadata[i].scale,
+                out_col_metadata[i].source,
+                out_col_metadata[i].description,
+            )
+            for i in range(len(out_col_metadata))
+        ]
+
+        name_to_field_dict = {
+            column.name: self._record_info_out.get_field_by_name(column.name)
+            for column in columns
+        }
+
+        name_to_setter_dict = {
+            column.name: interface_utils.get_field_setter_from_type(
+                name_to_field_dict[column.name]
+            )
+            for column in columns
+        }
+
+        record_creator = self._record_info_out.construct_record_creator()
+
+        for value in out_values_list:
+            record_creator.reset()
+
+            for idx, column in enumerate(columns):
+                field = name_to_field_dict[column.name]
+                if value[idx] is None:
+                    field.set_null(record_creator)
+                else:
+                    name_to_setter_dict[column.name](record_creator, value[idx])
+
+            ayx_record = record_creator.finalize_record()
+
+            self._handler.push_record(ayx_record, False)
 
         # Clear the data from the output_anchor
         self.data = None

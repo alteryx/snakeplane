@@ -27,7 +27,7 @@ factory = PluginFactory("ExampleSourceTool")
 @factory.initialize_plugin
 def init(input_mgr, user_data, logger):
     """Initialize the example source tool."""
-     # Get the selected value from the GUI and save it for later use in the user_data
+    # Get the selected value from the GUI and save it for later use in the user_data
     user_data.val = float(input_mgr.workflow_config["Value"])
 
     # Display info on the selected value
@@ -40,8 +40,12 @@ def init(input_mgr, user_data, logger):
     return True
 
 
-@factory.process_data(mode="source") # Input type not specified since this has no inputs
-def process_data(output_mgr, user_data, logger): # I don't need an input_mgr, so it's not added to the function signature
+@factory.process_data(
+    mode="source"
+)  # Input type not specified since this has no inputs
+def process_data(
+    output_mgr, user_data, logger
+):  # I don't need an input_mgr, so it's not added to the function signature
     """Generate some data to source."""
 
     # Append results to records

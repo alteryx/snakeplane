@@ -50,7 +50,7 @@ def process_data(input_mgr, output_mgr, user_data, logger):
     input_data = input_anchor.data
 
     # Append a column of zeros
-    df = pd.DataFrame({'New Column': [user_data.val]*input_data.shape[0]})
+    df = pd.DataFrame({"New Column": [user_data.val] * input_data.shape[0]})
 
     # Create output dataframe by appending our new column to the input data
     output_data = input_data.join(df)
