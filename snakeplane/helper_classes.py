@@ -17,7 +17,8 @@
 import copy
 import os
 import sys
-from collections import OrderedDict, namedtuple, UserDict
+from collections import OrderedDict, UserDict, namedtuple
+from enum import Enum
 from functools import partial
 from types import SimpleNamespace
 from typing import Any, List, Tuple, Union
@@ -262,6 +263,9 @@ class AyxPlugin:
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
 
 
+ChunkStage = Enum("ChunkStage", "none first middle last")
+
+
 class AyxPluginInterface:
     """Input interface base definition."""
 
@@ -277,6 +281,20 @@ class AyxPluginInterface:
         self._interface_state = SimpleNamespace(
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
+        self.chunk_stage = ChunkStage["none"]
+
+    @property
+    def chunk_stage(self) -> str:
+        """Interface chunk stage getter."""
+        return self.__chunk_stage
+
+    @chunk_stage.setter
+    def chunk_stage(self, new_chunk_stage: object) -> None:
+        """Interface chunk stage setter."""
+        if not type(new_chunk_stage) == ChunkStage:
+            raise ValueError("chunk_stage must be set to an instance of ChunkStage")
+
+        self.__chunk_stage = new_chunk_stage
 
     @property
     def metadata(self) -> object:

@@ -21,7 +21,7 @@ from functools import wraps
 import AlteryxPythonSDK as sdk
 
 import snakeplane.interface_utilities as interface_utils
-from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface, ChunkStage
 
 import xmltodict
 
@@ -530,7 +530,7 @@ class PluginFactory:
         self._build_metadata = decorated_build_metadata
         return
 
-    def process_data(self, mode: str = "batch", input_type: str = "list"):
+    def process_data(self, mode: str = "batch", input_type: str = "list", chunk_size: int = 1000):
         """
         Decorate a function to inject user defined functionality.
 
@@ -545,7 +545,7 @@ class PluginFactory:
         Parameters
         ----------
         mode : str
-        One of two options: 'batch' or 'stream'
+        One of three options: 'batch', 'chunk', or 'stream'
 
         Batch mode will cause the tool to pull in all input records for
         a given input anchor, collect them into a single data
@@ -554,6 +554,17 @@ class PluginFactory:
         object.
         An important note for batch is that the User Defined Function will be
         executed one time, on the entire set of records at once.
+
+        Chunk mode will cause the tool to pull a group (chunk) of records in
+        at a time, and make this chunk of records available to the User
+        Defined Function in the respective input_anchor object.
+        In addition, a chunk stage (ChunkStage) will be added to the
+        interface object which will resolve to one of the chunk stage values
+        defined in AyxPluginInterface. This allows the User Defined Function
+        to behave differently based on the chunking stage.
+        It should be noted that when the chunk_size is greater than the size
+        of the data coming in, chunk mode will only run the final chunk
+        stage.
 
         Stream mode will cause the tool to pull one input record in at a time,
         and make this single record available to the User Defined Function in
@@ -567,6 +578,11 @@ class PluginFactory:
         the UDF by the respective input_anchor contained in the input_mgr
         will either contain records in the form of a Python list or a
         Pandas DataFrame object.
+
+        chunk_size: int
+        Determines the number of records which should make up each chunk. The
+        final chunk will usually be less than the chunk_size, and this case
+        is handled internally by this wrapper.
 
         Returns
         -------
@@ -621,6 +637,21 @@ class PluginFactory:
                 [sdk.FieldType.v_string, sdk.FieldType.int64])
             output_anchor.set_data(output_df)
 
+        @factory.process_data(mode="chunk", input_type="dataframe", chunk_size=50)
+        def process_data(input_mgr, output_mgr, user_data, logger):
+            input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
+            input_df = input_anchor.get_data()
+
+            if(input_anchor[0].chunk_stage == ChunkStage["first"]):
+                message = f"First chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
+                logger.display_info_msg(message)
+            if(input_anchor[0].chunk_stage == ChunkStage["middle"]):
+                message = f"This middle chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
+                logger.display_info_msg(message)
+            if(input_anchor[0].chunk_stage == ChunkStage["last"]):
+                message = f"Last chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
+                logger.display_info_msg(message)
+
         @factory.process_data(mode="stream")
         def process_each_record(input_mgr, output_mgr, user_data, logger):
             input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
@@ -666,6 +697,45 @@ class PluginFactory:
                     func(plugin)
 
             @_run_only_if_pi_initialized
+            def chunk_ii_push_record(
+                plugin: object, current_interface: object, in_record: sdk.RecordRef
+            ):
+                current_interface.accumulate_record(in_record)
+
+                if (
+                    len(current_interface._interface_record_vars.record_list_in)
+                    >= chunk_size
+                ):
+
+                    if current_interface.chunk_stage == ChunkStage["none"]:
+                        self._init_func(plugin)
+                        current_interface.chunk_stage = ChunkStage["first"]
+
+                    self._build_metadata(plugin)
+
+                    func(plugin)
+
+                    # set after func called so first run maintains original chunk_stage
+                    current_interface.chunk_stage = ChunkStage["middle"]
+
+                    plugin.clear_accumulated_records()
+
+            @_run_only_if_pi_initialized
+            def chunk_ii_close(current_interface: object):
+                plugin = current_interface.parent
+
+                if current_interface.chunk_stage == ChunkStage["none"]:
+                    self._init_func(plugin)
+
+                self._build_metadata(plugin)
+
+                current_interface.chunk_stage = ChunkStage["last"]
+
+                func(plugin)
+
+                plugin.clear_accumulated_records()
+
+            @_run_only_if_pi_initialized
             def stream_ii_push_record(
                 plugin: object, current_interface: object, in_record: sdk.RecordRef
             ):
@@ -695,6 +765,9 @@ class PluginFactory:
                     )
                 )
                 self.build_ii_close(batch_ii_close)
+            elif mode.lower() == "chunk":
+                self.build_ii_push_record(chunk_ii_push_record)
+                setattr(self._plugin.plugin_interface, "ii_close", chunk_ii_close)
             elif mode.lower() == "stream":
                 # Streaming is the unique case for initialization
                 # It should be ran in pi_init.
@@ -704,7 +777,7 @@ class PluginFactory:
                 self.build_pi_push_all_records(source_pi_push_all_records)
             else:
                 err_str = """Mode parameter of process_data must be one of
-                    'batch'|'stream'|'source'"""
+                    'batch'|'chunk'|'stream'|'source'"""
                 raise ValueError(err_str)
 
         return decorator_process_data
