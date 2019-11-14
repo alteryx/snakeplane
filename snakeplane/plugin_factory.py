@@ -729,11 +729,13 @@ class PluginFactory:
 
                 self._build_metadata(plugin)
 
-                current_interface.chunk_stage = ChunkStage.last
+                if not plugin.update_only_mode:
 
-                func(plugin)
+                    current_interface.chunk_stage = ChunkStage.last
 
-                plugin.clear_accumulated_records()
+                    func(plugin)
+
+                    plugin.clear_accumulated_records()
 
             @_run_only_if_pi_initialized
             def stream_ii_push_record(
