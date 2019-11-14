@@ -642,13 +642,13 @@ class PluginFactory:
             input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
             input_df = input_anchor.get_data()
 
-            if(input_anchor[0].chunk_stage == ChunkStage["first"]):
+            if(input_anchor[0].chunk_stage == ChunkStage.first):
                 message = f"First chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
                 logger.display_info_msg(message)
-            if(input_anchor[0].chunk_stage == ChunkStage["middle"]):
+            if(input_anchor[0].chunk_stage == ChunkStage.middle):
                 message = f"This middle chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
                 logger.display_info_msg(message)
-            if(input_anchor[0].chunk_stage == ChunkStage["last"]):
+            if(input_anchor[0].chunk_stage == ChunkStage.last):
                 message = f"Last chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
                 logger.display_info_msg(message)
 
@@ -707,16 +707,16 @@ class PluginFactory:
                     >= chunk_size
                 ):
 
-                    if current_interface.chunk_stage == ChunkStage["none"]:
+                    if current_interface.chunk_stage == ChunkStage.none:
                         self._init_func(plugin)
-                        current_interface.chunk_stage = ChunkStage["first"]
+                        current_interface.chunk_stage = ChunkStage.first
 
                     self._build_metadata(plugin)
 
                     func(plugin)
 
                     # set after func called so first run maintains original chunk_stage
-                    current_interface.chunk_stage = ChunkStage["middle"]
+                    current_interface.chunk_stage = ChunkStage.middle
 
                     plugin.clear_accumulated_records()
 
@@ -724,12 +724,12 @@ class PluginFactory:
             def chunk_ii_close(current_interface: object):
                 plugin = current_interface.parent
 
-                if current_interface.chunk_stage == ChunkStage["none"]:
+                if current_interface.chunk_stage == ChunkStage.none:
                     self._init_func(plugin)
 
                 self._build_metadata(plugin)
 
-                current_interface.chunk_stage = ChunkStage["last"]
+                current_interface.chunk_stage = ChunkStage.last
 
                 func(plugin)
 

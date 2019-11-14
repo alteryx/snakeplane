@@ -263,7 +263,11 @@ class AyxPlugin:
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
 
 
-ChunkStage = Enum("ChunkStage", "none first middle last")
+class ChunkStage(Enum):
+    none = 1
+    first = 2
+    middle = 3
+    last = 4
 
 
 class AyxPluginInterface:
@@ -281,7 +285,7 @@ class AyxPluginInterface:
         self._interface_state = SimpleNamespace(
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
-        self.chunk_stage = ChunkStage["none"]
+        self.chunk_stage = ChunkStage.none
 
     @property
     def chunk_stage(self) -> str:
