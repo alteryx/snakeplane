@@ -707,11 +707,11 @@ class PluginFactory:
                     >= chunk_size
                 ):
 
+                    self._build_metadata(plugin)
+
                     if current_interface.chunk_stage == ChunkStage.none:
                         self._init_func(plugin)
                         current_interface.chunk_stage = ChunkStage.first
-
-                    self._build_metadata(plugin)
 
                     func(plugin)
 
@@ -724,10 +724,10 @@ class PluginFactory:
             def chunk_ii_close(current_interface: object):
                 plugin = current_interface.parent
 
+                self._build_metadata(plugin)
+
                 if current_interface.chunk_stage == ChunkStage.none:
                     self._init_func(plugin)
-
-                self._build_metadata(plugin)
 
                 if not plugin.update_only_mode:
 
