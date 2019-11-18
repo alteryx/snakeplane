@@ -53,6 +53,7 @@ class AyxPlugin:
             output_anchors={},
             config_data=None,
             required_input_names=[],
+            optional_input_names=[],
         )
 
         # Pull in the config XML data from conf file using the name of the tool
@@ -93,6 +94,10 @@ class AyxPlugin:
 
             # Track names of the inputs that are required for this tool to run
             if connection["@Optional"] == "False":
+                self._state_vars.required_input_names.append(connection["@Name"])
+                
+            # Track names of optional inputs that might be connected to the tool
+            if connection["@Optional"] == "True":
                 self._state_vars.required_input_names.append(connection["@Name"])
 
         for connection in plugin_utils.get_xml_config_output_connections(
@@ -151,6 +156,16 @@ class AyxPlugin:
                     [connection.completed for connection in connections]
                 ):
                     all_inputs_completed = False
+                    
+            if len(self._state_vars.optional_input_names) > 0:  # test if there are any optional anchors
+                for name in self._state_vars.optional_input_names:  # if there are, iterate through them
+                    if self._state_vars.input_anchors[name]:  # check if a optional connection is connected
+                        connections = self._state_vars.input_anchors[name] # has connected input finished?
+                        if len(connections) == 0 or not all(
+                            [connection.completed for connection in connections]
+                        ):
+                            all_inputs_completed = False
+                            
         else:
             all_inputs_completed = False
         return all_inputs_completed
