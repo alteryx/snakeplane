@@ -21,7 +21,7 @@ from functools import wraps
 import AlteryxPythonSDK as sdk
 
 import snakeplane.interface_utilities as interface_utils
-from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface, ChunkStage
+from snakeplane.helper_classes import AyxPlugin, AyxPluginInterface
 
 import xmltodict
 
@@ -558,13 +558,8 @@ class PluginFactory:
         Chunk mode will cause the tool to pull a group (chunk) of records in
         at a time, and make this chunk of records available to the User
         Defined Function in the respective input_anchor object.
-        In addition, a chunk stage (ChunkStage) will be added to the
-        interface object which will resolve to one of the chunk stage values
-        defined in AyxPluginInterface. This allows the User Defined Function
-        to behave differently based on the chunking stage.
-        It should be noted that when the chunk_size is greater than the size
-        of the data coming in, chunk mode will only run the final chunk
-        stage.
+        In addition, a property on the interface object which will indicate
+        whether or not the current chunk is the last chunk.
 
         Stream mode will cause the tool to pull one input record in at a time,
         and make this single record available to the User Defined Function in
@@ -642,13 +637,10 @@ class PluginFactory:
             input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
             input_df = input_anchor.get_data()
 
-            if(input_anchor[0].chunk_stage == ChunkStage.first):
-                message = f"First chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
+            if(input_anchor[0].is_last_chunk == False):
+                message = f"This chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
                 logger.display_info_msg(message)
-            if(input_anchor[0].chunk_stage == ChunkStage.middle):
-                message = f"This middle chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
-                logger.display_info_msg(message)
-            if(input_anchor[0].chunk_stage == ChunkStage.last):
+            if(input_anchor[0].is_last_chunk):
                 message = f"Last chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
                 logger.display_info_msg(message)
 
@@ -707,15 +699,12 @@ class PluginFactory:
                     >= chunk_size
                 ):
 
-                    if current_interface.chunk_stage == ChunkStage.none:
+                    if current_interface.is_last_chunk == None:
                         self._init_func(plugin)
                         self._build_metadata(plugin)
-                        current_interface.chunk_stage = ChunkStage.first
+                        current_interface.is_last_chunk = False
 
                     func(plugin)
-
-                    # set after func called so first run maintains original chunk_stage
-                    current_interface.chunk_stage = ChunkStage.middle
 
                     plugin.clear_accumulated_records()
 
@@ -723,13 +712,12 @@ class PluginFactory:
             def chunk_ii_close(current_interface: object):
                 plugin = current_interface.parent
 
-                if current_interface.chunk_stage == ChunkStage.none:
+                if current_interface.is_last_chunk == None:
                     self._init_func(plugin)
                     self._build_metadata(plugin)
 
                 if not plugin.update_only_mode:
-
-                    current_interface.chunk_stage = ChunkStage.last
+                    current_interface.is_last_chunk = True
 
                     func(plugin)
 

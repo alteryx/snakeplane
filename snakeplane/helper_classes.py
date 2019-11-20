@@ -263,13 +263,6 @@ class AyxPlugin:
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
 
 
-class ChunkStage(Enum):
-    none = 1
-    first = 2
-    middle = 3
-    last = 4
-
-
 class AyxPluginInterface:
     """Input interface base definition."""
 
@@ -285,20 +278,7 @@ class AyxPluginInterface:
         self._interface_state = SimpleNamespace(
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
-        self.chunk_stage = ChunkStage.none
-
-    @property
-    def chunk_stage(self) -> str:
-        """Interface chunk stage getter."""
-        return self.__chunk_stage
-
-    @chunk_stage.setter
-    def chunk_stage(self, new_chunk_stage: object) -> None:
-        """Interface chunk stage setter."""
-        if not type(new_chunk_stage) == ChunkStage:
-            raise ValueError("chunk_stage must be set to an instance of ChunkStage")
-
-        self.__chunk_stage = new_chunk_stage
+        self.is_last_chunk = None
 
     @property
     def metadata(self) -> object:
