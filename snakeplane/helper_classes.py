@@ -26,6 +26,7 @@ import AlteryxPythonSDK as sdk
 
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
+from snakeplane.constants import SNAKEPLANE_NULL_VALUE_PLACEHOLDER
 
 import xmltodict
 
@@ -519,7 +520,7 @@ class OutputAnchor:
             for col_idx, column in enumerate(columns):
                 field = name_to_field_dict[column.name]
                 element = row[col_idx]
-                if element is None :
+                if element is None or element == SNAKEPLANE_NULL_VALUE_PLACEHOLDER:
                     field.set_null(record_creator)
                 else:
                     name_to_setter_dict[column.name](record_creator, element)
