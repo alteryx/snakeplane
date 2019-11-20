@@ -12,6 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 """Interface utilities for the snakeplane library."""
+from snakeplane.constants import SNAKEPLANE_NULL_VALUE_PLACEHOLDER
+
 from typing import Any, List, Optional, Tuple
 
 import AlteryxPythonSDK as sdk
@@ -351,5 +353,5 @@ def dataframe_to_list(df: object) -> List[List[Any]]:
     """
     import numpy as np
 
-    df.replace(np.nan, None, inplace=True)
+    df.fillna(SNAKEPLANE_NULL_VALUE_PLACEHOLDER, inplace=True)
     return df.values.tolist()
