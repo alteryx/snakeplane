@@ -17,8 +17,7 @@
 import copy
 import os
 import sys
-from collections import OrderedDict, UserDict, namedtuple
-from enum import Enum
+from collections import OrderedDict, namedtuple, UserDict
 from functools import partial
 from types import SimpleNamespace
 from typing import Any, List, Tuple, Union
@@ -27,7 +26,6 @@ import AlteryxPythonSDK as sdk
 
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
-from snakeplane.constants import SNAKEPLANE_NULL_VALUE_PLACEHOLDER
 
 import xmltodict
 
@@ -264,13 +262,6 @@ class AyxPlugin:
         return sdk.RecordInfo(self._engine_vars.alteryx_engine)
 
 
-class ChunkStage(Enum):
-    none = 1
-    first = 2
-    middle = 3
-    last = 4
-
-
 class AyxPluginInterface:
     """Input interface base definition."""
 
@@ -286,20 +277,6 @@ class AyxPluginInterface:
         self._interface_state = SimpleNamespace(
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
-        self.chunk_stage = ChunkStage.none
-
-    @property
-    def chunk_stage(self) -> str:
-        """Interface chunk stage getter."""
-        return self.__chunk_stage
-
-    @chunk_stage.setter
-    def chunk_stage(self, new_chunk_stage: object) -> None:
-        """Interface chunk stage setter."""
-        if not type(new_chunk_stage) == ChunkStage:
-            raise ValueError("chunk_stage must be set to an instance of ChunkStage")
-
-        self.__chunk_stage = new_chunk_stage
 
     @property
     def metadata(self) -> object:
@@ -541,11 +518,10 @@ class OutputAnchor:
 
             for idx, column in enumerate(columns):
                 field = name_to_field_dict[column.name]
-                element = value[idx]
-                if element is None or element == SNAKEPLANE_NULL_VALUE_PLACEHOLDER:
+                if value[idx] is None:
                     field.set_null(record_creator)
                 else:
-                    name_to_setter_dict[column.name](record_creator, element)
+                    name_to_setter_dict[column.name](record_creator, value[idx])
 
             ayx_record = record_creator.finalize_record()
 
