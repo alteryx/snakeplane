@@ -513,15 +513,16 @@ class OutputAnchor:
 
         record_creator = self._record_info_out.construct_record_creator()
 
-        for value in out_values_list:
+        for row in out_values_list:
             record_creator.reset()
 
-            for idx, column in enumerate(columns):
+            for col_idx, column in enumerate(columns):
                 field = name_to_field_dict[column.name]
-                if value[idx] is None:
+                element = row[col_idx]
+                if element is None :
                     field.set_null(record_creator)
                 else:
-                    name_to_setter_dict[column.name](record_creator, value[idx])
+                    name_to_setter_dict[column.name](record_creator, element)
 
             ayx_record = record_creator.finalize_record()
 
