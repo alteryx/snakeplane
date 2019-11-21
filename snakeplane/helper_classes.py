@@ -17,7 +17,8 @@
 import copy
 import os
 import sys
-from collections import OrderedDict, namedtuple, UserDict
+from collections import OrderedDict, UserDict, namedtuple
+from enum import Enum
 from functools import partial
 from types import SimpleNamespace
 from typing import Any, List, Tuple, Union
@@ -277,6 +278,7 @@ class AyxPluginInterface:
         self._interface_state = SimpleNamespace(
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
+        self.is_last_chunk = None
 
     @property
     def metadata(self) -> object:
