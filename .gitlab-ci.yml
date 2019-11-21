@@ -1,6 +1,7 @@
 build:
   image: python:3.6-alpine
   script:
+    - apk add --no-cache gcc musl-dev
     - pip3 install wheel setuptools twine
     - python3 setup.py sdist bdist_wheel
     - twine upload dist/*
