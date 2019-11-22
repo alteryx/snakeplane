@@ -555,6 +555,12 @@ class PluginFactory:
         An important note for batch is that the User Defined Function will be
         executed one time, on the entire set of records at once.
 
+        Chunk mode will cause the tool to pull a group (chunk) of records in
+        at a time, and make this chunk of records available to the User
+        Defined Function in the respective input_anchor object.
+        In addition, a property on the interface object which will indicate
+        whether or not the current chunk is the last chunk.
+
         Stream mode will cause the tool to pull one input record in at a time,
         and make this single record available to the User Defined Function in
         the respective input_anchor object.
@@ -621,6 +627,18 @@ class PluginFactory:
                 [sdk.FieldType.v_string, sdk.FieldType.int64])
             output_anchor.set_data(output_df)
 
+        @factory.process_data(mode="chunk", input_type="dataframe", chunk_size=50)
+        def process_data(input_mgr, output_mgr, user_data, logger):
+            input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
+            input_df = input_anchor.get_data()
+
+            if(input_anchor[0].is_last_chunk == False):
+                message = f"This chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
+                logger.display_info_msg(message)
+            if(input_anchor[0].is_last_chunk):
+                message = f"Last chunk contains records |{input_df.iloc[0]}| to |{input_df.iloc[49]}|"
+                logger.display_info_msg(message)
+
         @factory.process_data(mode="stream")
         def process_each_record(input_mgr, output_mgr, user_data, logger):
             input_anchor = input_mgr.get_anchor("AnchorNameFromConfigXmlFile")
@@ -664,6 +682,41 @@ class PluginFactory:
 
                     # Call user function to batch process data
                     func(plugin)
+
+            @_run_only_if_pi_initialized
+            def chunk_ii_push_record(
+                plugin: object, current_interface: object, in_record: sdk.RecordRef
+            ):
+                current_interface.accumulate_record(in_record)
+
+                if (
+                    len(current_interface._interface_record_vars.record_list_in)
+                    >= chunk_size
+                ):
+
+                    if current_interface.is_last_chunk == None:
+                        self._init_func(plugin)
+                        self._build_metadata(plugin)
+                        current_interface.is_last_chunk = False
+
+                    func(plugin)
+
+                    plugin.clear_accumulated_records()
+
+            @_run_only_if_pi_initialized
+            def chunk_ii_close(current_interface: object):
+                plugin = current_interface.parent
+
+                if current_interface.is_last_chunk == None:
+                    self._init_func(plugin)
+                    self._build_metadata(plugin)
+
+                if not plugin.update_only_mode:
+                    current_interface.is_last_chunk = True
+
+                    func(plugin)
+
+                    plugin.clear_accumulated_records()
 
             @_run_only_if_pi_initialized
             def stream_ii_push_record(

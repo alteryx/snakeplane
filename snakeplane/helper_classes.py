@@ -279,6 +279,8 @@ class AyxPluginInterface:
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
 
+        self.is_last_chunk = None
+
     @property
     def metadata(self) -> object:
         """Input metadata getter."""
