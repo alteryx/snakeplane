@@ -700,7 +700,8 @@ class PluginFactory:
                 ):
 
                     if current_interface.is_last_chunk == None:
-                        if not self._init_func(plugin):
+                        current_plugin.initialized = self._init_func(plugin)
+                        if not current_plugin.initialized:
                             return
                         self._build_metadata(plugin)
                         current_interface.is_last_chunk = False
@@ -714,7 +715,8 @@ class PluginFactory:
                 plugin = current_interface.parent
 
                 if current_interface.is_last_chunk == None:
-                    if not self._init_func(plugin):
+                    current_plugin.initialized = self._init_func(plugin)
+                    if not current_plugin.initialized:
                         return
                     self._build_metadata(plugin)
 
