@@ -17,8 +17,7 @@
 import copy
 import os
 import sys
-from collections import OrderedDict, UserDict, namedtuple
-from enum import Enum
+from collections import OrderedDict, namedtuple, UserDict
 from functools import partial
 from types import SimpleNamespace
 from typing import Any, List, Tuple, Union
@@ -27,6 +26,7 @@ import AlteryxPythonSDK as sdk
 
 import snakeplane.interface_utilities as interface_utils
 import snakeplane.plugin_utilities as plugin_utils
+from snakeplane.constants import SNAKEPLANE_NULL_VALUE_PLACEHOLDER
 
 import xmltodict
 
@@ -278,6 +278,7 @@ class AyxPluginInterface:
         self._interface_state = SimpleNamespace(
             input_complete=False, d_progress_percentage=0, data_processing_mode="batch"
         )
+
         self.is_last_chunk = None
 
     @property
@@ -515,15 +516,16 @@ class OutputAnchor:
 
         record_creator = self._record_info_out.construct_record_creator()
 
-        for value in out_values_list:
+        for row in out_values_list:
             record_creator.reset()
 
-            for idx, column in enumerate(columns):
+            for col_idx, column in enumerate(columns):
                 field = name_to_field_dict[column.name]
-                if value[idx] is None:
+                element = row[col_idx]
+                if element is None or element == SNAKEPLANE_NULL_VALUE_PLACEHOLDER:
                     field.set_null(record_creator)
                 else:
-                    name_to_setter_dict[column.name](record_creator, value[idx])
+                    name_to_setter_dict[column.name](record_creator, element)
 
             ayx_record = record_creator.finalize_record()
 
