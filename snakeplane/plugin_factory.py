@@ -702,10 +702,10 @@ class PluginFactory:
                     if current_interface.is_last_chunk == None:
                         current_plugin = current_interface.parent
                         current_plugin.initialized = self._init_func(plugin)
+                        current_interface.is_last_chunk = False
                         if not current_plugin.initialized:
                             return
                         self._build_metadata(plugin)
-                        current_interface.is_last_chunk = False
 
                     func(plugin)
 
@@ -715,6 +715,9 @@ class PluginFactory:
             def chunk_ii_close(current_interface: object):
                 plugin = current_interface.parent
 
+                if plugin.update_only_mode:
+                    return
+
                 if current_interface.is_last_chunk == None:
                     current_plugin = current_interface.parent
                     current_plugin.initialized = self._init_func(plugin)
@@ -722,7 +725,6 @@ class PluginFactory:
                         return
                     self._build_metadata(plugin)
 
-                if not plugin.update_only_mode:
                     current_interface.is_last_chunk = True
 
                     func(plugin)
