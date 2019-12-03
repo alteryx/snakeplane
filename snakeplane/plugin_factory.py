@@ -530,7 +530,7 @@ class PluginFactory:
         self._build_metadata = decorated_build_metadata
         return
 
-    def process_data(self, mode: str = "batch", input_type: str = "list"):
+    def process_data(self, mode: str = "batch", input_type: str = "list", chunk_size: int = 1000):
         """
         Decorate a function to inject user defined functionality.
 
@@ -545,7 +545,7 @@ class PluginFactory:
         Parameters
         ----------
         mode : str
-        One of two options: 'batch' or 'stream'
+        One of three options: 'batch', 'chunk', or 'stream'
 
         Batch mode will cause the tool to pull in all input records for
         a given input anchor, collect them into a single data
@@ -573,6 +573,11 @@ class PluginFactory:
         the UDF by the respective input_anchor contained in the input_mgr
         will either contain records in the form of a Python list or a
         Pandas DataFrame object.
+
+        chunk_size: int
+        Determines the number of records which should make up each chunk. The
+        final chunk will usually be less than the chunk_size, and this case
+        is handled internally by this wrapper.
 
         Returns
         -------
@@ -748,6 +753,9 @@ class PluginFactory:
                     )
                 )
                 self.build_ii_close(batch_ii_close)
+            elif mode.lower() == "chunk":
+                self.build_ii_push_record(chunk_ii_push_record)
+                setattr(self._plugin.plugin_interface, "ii_close", chunk_ii_close)
             elif mode.lower() == "stream":
                 # Streaming is the unique case for initialization
                 # It should be ran in pi_init.
@@ -757,7 +765,7 @@ class PluginFactory:
                 self.build_pi_push_all_records(source_pi_push_all_records)
             else:
                 err_str = """Mode parameter of process_data must be one of
-                    'batch'|'stream'|'source'"""
+                    'batch'|'chunk'|'stream'|'source'"""
                 raise ValueError(err_str)
 
         return decorator_process_data
