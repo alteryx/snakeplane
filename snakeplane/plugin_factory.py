@@ -723,11 +723,11 @@ class PluginFactory:
                         return
                     self._build_metadata(plugin)
 
-                    current_interface.is_last_chunk = True
+                current_interface.is_last_chunk = True
 
-                    func(plugin)
+                func(plugin)
 
-                    plugin.clear_accumulated_records()
+                plugin.clear_accumulated_records()
 
             @_run_only_if_pi_initialized
             def stream_ii_push_record(
