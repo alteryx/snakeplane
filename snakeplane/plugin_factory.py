@@ -723,6 +723,9 @@ class PluginFactory:
                         return
                     self._build_metadata(plugin)
 
+                if not plugin.initialized:
+                    return
+
                 current_interface.is_last_chunk = True
 
                 func(plugin)
