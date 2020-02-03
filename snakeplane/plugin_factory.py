@@ -29,6 +29,7 @@ DEBUG = False
 
 logger = logging.getLogger(__name__)
 
+
 class PluginFactory:
     """
     Class for generating a plugin using the snakeplane framework.
@@ -134,9 +135,9 @@ class PluginFactory:
                 current_plugin.save_output_anchor_refs()
 
                 # Parse XML and save
-                current_plugin.workflow_config = xmltodict.parse(config_xml)[
-                    "Configuration"
-                ]
+                current_plugin.workflow_config = xmltodict.parse(
+                    config_xml, strip_whitespace=False
+                )["Configuration"]
 
                 # Call decorated function
                 val = func(current_plugin)
@@ -221,7 +222,10 @@ class PluginFactory:
                 if len(current_plugin._state_vars.required_input_names) == 0:
                     if current_plugin.update_only_mode:
                         self._build_metadata(current_plugin)
-                        for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        for (
+                            _,
+                            anchor,
+                        ) in current_plugin._state_vars.output_anchors.items():
                             anchor.push_metadata(current_plugin)
                     else:
                         # Only call the users defined function when there are no required
@@ -348,7 +352,10 @@ class PluginFactory:
                     ret_val = self._init_func(current_plugin)
                     if ret_val:
                         self._build_metadata(current_plugin)
-                        for _, anchor in current_plugin._state_vars.output_anchors.items():
+                        for (
+                            _,
+                            anchor,
+                        ) in current_plugin._state_vars.output_anchors.items():
                             anchor.push_metadata(current_plugin)
 
                 return True
@@ -530,7 +537,9 @@ class PluginFactory:
         self._build_metadata = decorated_build_metadata
         return
 
-    def process_data(self, mode: str = "batch", input_type: str = "list", chunk_size: int = 1000):
+    def process_data(
+        self, mode: str = "batch", input_type: str = "list", chunk_size: int = 1000
+    ):
         """
         Decorate a function to inject user defined functionality.
 
