@@ -36,7 +36,7 @@ type_dict = {
     "v_wstring": "get_as_string",
     "wstring": "get_as_string",
     "fixeddecimal": "get_as_double",
-    "spatialobj": "get_as_blob"
+    "spatialobj": "get_as_blob",
 }
 
 
