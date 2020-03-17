@@ -15,6 +15,7 @@
 
 # Built in Libraries
 import os
+import sys
 from typing import Any, Dict, List
 
 
@@ -62,11 +63,20 @@ def get_tools_location() -> str:
     """Get the path to the Alteryx Python SDK Tools directory."""
     admin_path = os.path.join(os.environ["APPDATA"], "Alteryx", "Tools")
     user_path = os.path.join(os.environ["PROGRAMDATA"], "Alteryx", "Tools")
+    alteryx_bin = (
+        os.path.dirname(sys.executable)
+        if "AlteryxEngineCmd.exe" in sys.executable
+        else ""
+    )
+    html_plugins_path = os.path.join(alteryx_bin, "HtmlPlugins")
     if contains_path(__file__, admin_path):
         return admin_path
 
     if contains_path(__file__, user_path):
         return user_path
+
+    if contains_path(__file__, alteryx_bin):
+        return html_plugins_path
 
     raise RuntimeError("Tool is not located in Alteryx install locations.")
 
