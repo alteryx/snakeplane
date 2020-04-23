@@ -736,6 +736,7 @@ class PluginFactory:
                     return
 
                 current_interface.is_last_chunk = True
+                current_interface.completed = True
 
                 func(plugin)
 
