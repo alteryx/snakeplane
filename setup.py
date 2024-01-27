@@ -16,6 +16,6 @@ setup(
     description="The Alteryx Python SDK Abstraction Layer",
     author="Alteryx",
     author_email="awalden@alteryx.com",
-    install_requires=["numpy==1.19.1", "xmltodict==0.12.0"],
+    install_requires=["numpy==1.22.1", "xmltodict==0.12.0"],
     packages=find_packages(),
 )
