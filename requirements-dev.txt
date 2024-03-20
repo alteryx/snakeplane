@@ -1,4 +1,4 @@
-black==18.9b0
+black==24.3.0
 flake8==3.7.5
 flake8-import-order==0.18
 pep8==1.7.1
